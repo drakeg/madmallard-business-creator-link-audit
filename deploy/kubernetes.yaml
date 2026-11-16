@@ -1,0 +1,77 @@
+# Preparation only. Replace image, storage class, hosts and provision the Secret.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: creator-link-audit
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: audit-data
+  namespace: creator-link-audit
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: gp3
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: audit
+  namespace: creator-link-audit
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {app: creator-link-audit}
+  template:
+    metadata:
+      labels: {app: creator-link-audit}
+    spec:
+      securityContext: {runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001}
+      initContainers:
+        - name: migrate
+          image: REPLACE_ECR_IMAGE_BY_DIGEST
+          command: [sh, -c, 'python manage.py migrate --noinput && python manage.py bootstrap']
+          envFrom: [{secretRef: {name: audit-secrets}}]
+          env: [{name: DB_PATH, value: /data/audit.sqlite3}]
+          volumeMounts: [{name: data, mountPath: /data}]
+      containers:
+        - name: web
+          image: REPLACE_ECR_IMAGE_BY_DIGEST
+          command: [gunicorn, 'config.wsgi:application', --bind, '0.0.0.0:8000', --workers, '2', --threads, '2']
+          ports: [{containerPort: 8000}]
+          envFrom: [{secretRef: {name: audit-secrets}}]
+          env:
+            - {name: DB_PATH, value: /data/audit.sqlite3}
+            - {name: ALLOWED_HOSTS, value: REPLACE_HOSTNAME}
+            - {name: COOKIE_SECURE, value: 'true'}
+          readinessProbe: {httpGet: {path: /health/, port: 8000}, initialDelaySeconds: 5}
+          livenessProbe: {httpGet: {path: /health/, port: 8000}, initialDelaySeconds: 20}
+          resources: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: '1', memory: 512Mi}}
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+          volumeMounts: [{name: data, mountPath: /data}]
+        - name: worker
+          image: REPLACE_ECR_IMAGE_BY_DIGEST
+          command: [python, manage.py, worker]
+          envFrom: [{secretRef: {name: audit-secrets}}]
+          env: [{name: DB_PATH, value: /data/audit.sqlite3}]
+          resources: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: '1', memory: 512Mi}}
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+          volumeMounts: [{name: data, mountPath: /data}]
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: audit-data}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: audit
+  namespace: creator-link-audit
+spec:
+  type: ClusterIP
+  selector: {app: creator-link-audit}
+  ports: [{port: 80, targetPort: 8000}]
