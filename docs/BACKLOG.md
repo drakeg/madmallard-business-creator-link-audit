@@ -40,3 +40,7 @@ P2: Validate $149 demand through owner-approved pilot activity; outreach is not 
 - Dedicated Loaded videos / Imported descriptions pages and prominent project return
   links now separate import stages from scan reports. Lists survive navigation for 29 days;
   saved-page links and safe bookmark login returns are covered by regression tests.
+
+- Import resilience: bounded supplemental extraction, explicit fallback warnings, rollback
+  regression tests, safe error references and production-mode error logging. Exact root
+  cause of the historical unreproduced 500 remains unknown; future references are logged.

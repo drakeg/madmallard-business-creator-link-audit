@@ -1,4 +1,4 @@
-import csv,hashlib,io,json
+import csv,hashlib,io,json,time
 from datetime import timedelta
 from urllib.parse import urlsplit
 from django.conf import settings
@@ -72,10 +72,12 @@ def project(request,pk):
                 rows=[(d['title'] or final,d['original_url'],body.decode('utf-8',errors='replace'),d['discount_codes'])]
             else: rows=[(d['title'] or 'Pasted source',d['original_url'],d['content'],d['discount_codes'])]
             prepared=[]
+            extraction_notices=[]
+            extraction_deadline=time.monotonic()+20
             for title,url,content,codes in rows:
                 if not content.strip(): raise ValueError('Every source needs content')
                 if len(content)>1_000_000: raise ValueError('Source exceeds size limit')
-                prepared.append((title[:200],url,content,codes,extract(content,url)))
+                prepared.append((title[:200],url,content,codes,extract(content,url,notices=extraction_notices,deadline=extraction_deadline)))
             with transaction.atomic():
                 Project.objects.filter(pk=p.pk).update(name=p.name) # SQLite write lock before limit checks
                 if p.scans.exists(): raise ValueError('Sources locked: scan already queued')
@@ -86,6 +88,7 @@ def project(request,pk):
                 for title,url,content,codes,links in prepared:
                     source=Source.objects.create(project=p,title=title,original_url=url,content=content,codes=codes)
                     Link.objects.bulk_create([Link(source=source,url=u,affiliate_parameters=parameters(u)) for u in links])
+            for notice in extraction_notices: messages.warning(request,notice)
             messages.success(request,f'Imported {len(rows)} source(s); original content and link associations preserved.')
             return redirect('project',pk=p.pk)
         except Exception as exc: form.add_error(None,str(exc)[:500])

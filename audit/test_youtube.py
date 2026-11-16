@@ -1,4 +1,6 @@
 import json
+import subprocess
+from django.db import DatabaseError
 from datetime import timedelta
 from unittest.mock import patch
 from django.test import TestCase, SimpleTestCase, override_settings, Client
@@ -279,3 +281,33 @@ class YouTubeWorkflowTests(TestCase):
         self.client.logout()
         response=self.client.post("/login/",{"username":"owner","password":"a-long-test-password","next":"https://evil.example/results"})
         self.assertEqual(response["Location"],"/")
+
+    @patch("audit.ingest.subprocess.run",side_effect=subprocess.TimeoutExpired("lychee",5))
+    def test_helper_timeout_imports_with_explicit_fallback_warning(self,run):
+        preview=self.preview()
+        response=self.client.post(self.path,{"action":"import","preview":preview.pk,"videos":[VIDEO],"authorized":"on"},follow=True)
+        self.assertEqual(response.status_code,200)
+        self.assertEqual(self.project.sources.count(),1)
+        self.assertContains(response,"built-in URL parser")
+        self.assertEqual(self.project.sources.get().links.get().affiliate_parameters,"tag=Exact%2BId&ref=A+B")
+
+    @patch("audit.youtube_views.extract",return_value=["https://example.com"])
+    @patch("audit.youtube_views.Link.objects.bulk_create",side_effect=DatabaseError("synthetic database busy"))
+    def test_database_failure_rolls_back_and_shows_reference(self,bulk,extract):
+        preview=self.preview()
+        with self.assertLogs("audit.youtube_views",level="ERROR") as logs:
+            response=self.client.post(self.path,{"action":"import","preview":preview.pk,"videos":[VIDEO],"authorized":"on"})
+        self.assertContains(response,"Error reference:")
+        self.assertContains(response,"loaded video list is still saved")
+        self.assertEqual(self.project.sources.count(),0)
+        self.assertTrue(YouTubePreview.objects.filter(pk=preview.pk).exists())
+        self.assertTrue(any("reference=" in line for line in logs.output))
+
+    @patch("audit.youtube_views.extract",side_effect=RuntimeError("synthetic internal detail"))
+    def test_unexpected_import_error_is_not_a_raw_500(self,extract):
+        preview=self.preview()
+        with self.assertLogs("audit.youtube_views",level="ERROR"):
+            response=self.client.post(self.path,{"action":"import","preview":preview.pk,"videos":[VIDEO],"authorized":"on"})
+        self.assertContains(response,"Error reference:")
+        self.assertNotContains(response,"synthetic internal detail")
+        self.assertEqual(self.project.sources.count(),0)
