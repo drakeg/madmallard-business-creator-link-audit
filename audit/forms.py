@@ -21,6 +21,6 @@ class ProfileForm(forms.ModelForm):
         model=User
         fields=['first_name','last_name','email']
 class ReviewForm(forms.Form):
-    manual_status=forms.ChoiceField(choices=[('unreviewed','Unreviewed'),('needs_owner','Needs owner decision'),('destination_verified','Destination/product manually verified'),('discount_unverified','Discount code unverified'),('discount_verified','Discount code manually verified'),('replacement_proposed','Replacement proposed')])
+    manual_status=forms.ChoiceField(choices=[('unreviewed','Unreviewed'),('wrong_destination','Wrong destination reported / incorrect product'),('needs_owner','Needs owner decision'),('destination_verified','Destination/product manually verified'),('discount_unverified','Discount code unverified'),('discount_verified','Discount code manually verified'),('replacement_proposed','Replacement proposed')])
     notes=forms.CharField(required=False,widget=forms.Textarea)
     replacement=forms.URLField(required=False,label='Proposed replacement URL (never published)')

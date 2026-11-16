@@ -123,3 +123,21 @@ have been performed. Unit network cases are controlled simulations, not unsafe n
 - Live source/report data remained unchanged; a backup was taken before deployment. No
   YouTube API calls or external writes were needed. This does not claim that the user's
   exact original selection/error was reproduced or that a real browser click was tested.
+
+## Result interpretation and manual destination mismatch — November 16, 2026
+- Added read-time explanations to review/report/print pages and CSV exports: final HTTP
+  status versus intermediate redirects, next actions, exact final-URL affiliate parameters
+  hidden by shortlinks, product identifiers where recognizable, and clearer review labels.
+- Added an evidence-required wrong-destination manual status. It takes priority in the
+  displayed assessment while preserving original technical status/category/URLs.
+- All 89 tests passed, including redirect-to-success versus redirect-to-missing, access
+  denial, unsafe clickable URLs, exact encoded/duplicate parameters, exports, required
+  manual evidence and manual mismatch display without overwriting HTTP observations.
+- Locally inspected the reported record: automated evidence showed a shortlink redirect
+  and a successful response from an Amazon product URL, while the owner reported their
+  browser landed on Amazon's homepage. Recorded that as owner-reported evidence, not as
+  an independently verified browser check. No affiliate IDs or external content changed.
+- Existing scan contained four unique target checks and 64 source-link observations; the
+  UI now explains why repeated source occurrences differ from unique-link progress.
+- No external destination requests or new scan/retest were made. Browser visual/click QA
+  remains unverified; live server-page rendering is checked separately.
