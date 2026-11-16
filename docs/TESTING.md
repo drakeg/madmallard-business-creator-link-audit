@@ -69,3 +69,22 @@ have been performed. Unit network cases are controlled simulations, not unsafe n
   A real channel import/audit, live quota/error behavior and browser/mobile visual QA remain
   unverified. API fixtures must not be described as live YouTube validation. No Google
   account authorization, cloud deployment, new schedules or cross-app integration occurred.
+
+## YouTube load-feedback fix — November 16, 2026
+- Investigated the reported blank-feedback behavior: existing API-created local previews
+  contained 50 Mad Mallards Adventures videos. The previous page rendered them below setup
+  and did not restore a preview on a normal return to the project. No API key was retrieved.
+- Added results-first rendering, explicit loaded/empty/error states, progress and validation
+  notices, selection controls, success redirects anchored to results, and restoration of the
+  newest unexpired preview scoped to the same user/project without new API requests.
+- All 59 server/integration tests passed in the rebuilt image, including seven regressions
+  for visible result order, safe redirects, refresh/return behavior, isolation, expiry,
+  loading markup, empty results and failure feedback.
+- No live API retry was needed: the user's existing preview was used for local verification.
+  Actual browser execution/visual QA of the loading script remains unverified because the
+  local-browser connector was unavailable. Server HTML/form behavior is separately tested.
+
+- Actual LAN HTTP verification after redeploy: sign-in and ordinary GETs for projects 3
+  and 5 restored each existing 50-video preview above the API-key form. No key was
+  re-entered/retrieved and no YouTube API retry was made. Frontend script syntax passed
+  Node --check; this is not a browser execution test.

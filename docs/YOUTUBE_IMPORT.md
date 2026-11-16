@@ -13,9 +13,13 @@ https://www.youtube.com/@madmallardsadventures
    create Google Cloud projects, enable billing, purchase anything or raise quotas.
 4. Click Load channel videos, select up to the remaining source limit (maximum 20), confirm
    ownership/permission and retention terms, then Import selected descriptions.
-5. Follow Open project & queue link scan. The existing scanner checks up to 100 unique
+5. Successful loads redirect to a visible video-count/results section above setup. Returning
+   to the same project restores the latest unexpired preview for your account, without
+   another API call. Loading indicators, explicit empty/error states, selection counts and
+   select-first/clear controls make the current step visible.
+6. Follow Open project & queue link scan. The existing scanner checks up to 100 unique
    outbound URLs while keeping every video's title, watch URL and original description.
-6. Browse older uploads 50 per page. Import a selection before moving to the next page.
+7. Browse older uploads 50 per page. Import a selection before moving to the next page.
    Repeated imports skip existing video IDs. Only public videos from the resolved channel
    are eligible. Private/deleted/unavailable videos are omitted. No page scraping fallback.
 

@@ -35,7 +35,14 @@ class YouTubeRetentionMiddleware:
 def channel_import(request, pk):
     project = project_for(request, pk)
     url = request.POST.get("channel_url", request.GET.get("channel_url", project.youtube_channel_url))
-    preview = scoped_preview(request.GET["preview"], project, request.user) if request.GET.get("preview") else None
+    preview = None
+    if request.method == "GET":
+        if request.GET.get("preview"):
+            preview = scoped_preview(request.GET["preview"], project, request.user)
+        elif not request.GET.get("channel_url"):
+            preview = YouTubePreview.objects.filter(project=project, user=request.user, expires_at__gt=timezone.now()).order_by("-expires_at").first()
+        if preview:
+            url = preview.payload["channel_url"]
     error = ""
     if request.method == "POST":
         action = request.POST.get("action", "browse")
@@ -64,6 +71,9 @@ def channel_import(request, pk):
                 preview = YouTubePreview.objects.create(user=request.user, project=project, payload=payload, expires_at=timezone.now()+timedelta(minutes=30))
                 project.youtube_channel_url = payload["channel_url"]
                 project.save(update_fields=["youtube_channel_url"])
+                count = len(payload["videos"])
+                messages.success(request, f"Loaded {count} public videos from {payload['channel_title']}. Select descriptions below to import.")
+                return redirect(f"/projects/{project.pk}/youtube/?preview={preview.pk}#videos")
             except YouTubeError as exc:
                 error = str(exc)
         elif action == "import":
@@ -99,7 +109,7 @@ def channel_import(request, pk):
                         Link.objects.bulk_create([Link(source=source, url=u, affiliate_parameters=parameters(u)) for u in links])
                     # Keep the short-lived catalogue so older-page navigation still works.
                 messages.success(request, f"Imported {len(prepared)} YouTube description(s). Now queue the initial link scan.")
-                return redirect(f"/projects/{project.pk}/youtube/?preview={preview.pk}")
+                return redirect(f"/projects/{project.pk}/youtube/?preview={preview.pk}#videos")
             except (YouTubeError, ValueError) as exc:
                 error = str(exc)
         else:

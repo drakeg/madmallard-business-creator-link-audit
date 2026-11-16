@@ -68,7 +68,7 @@ class YouTubeWorkflowTests(TestCase):
         self.assertEqual(Source.objects.count(),0)
     @patch("audit.youtube_views.load_channel",return_value=PAYLOAD)
     def test_browse_does_not_persist_key(self,load):
-        response=self.client.post(self.path,{"action":"browse","channel_url":URL,"api_key":"SECRET-KEY"})
+        response=self.client.post(self.path,{"action":"browse","channel_url":URL,"api_key":"SECRET-KEY"},follow=True)
         self.assertEqual(response.status_code,200)
         self.assertNotContains(response,"SECRET-KEY")
         self.assertNotIn("SECRET-KEY",json.dumps(YouTubePreview.objects.get().payload))
@@ -149,6 +149,62 @@ class YouTubeWorkflowTests(TestCase):
     @patch("audit.youtube_views.load_channel",return_value=PAYLOAD)
     def test_older_page_uses_scoped_server_token(self,load):
         preview=self.preview()
-        response=self.client.post(self.path,{"action":"browse","channel_url":URL,"page":preview.pk,"api_key":"synthetic-key","page_token":"forged"})
+        response=self.client.post(self.path,{"action":"browse","channel_url":URL,"page":preview.pk,"api_key":"synthetic-key","page_token":"forged"},follow=True)
         self.assertEqual(response.status_code,200)
         self.assertEqual(load.call_args.args[2],"older")
+
+    @patch("audit.youtube_views.load_channel",return_value=PAYLOAD)
+    def test_success_redirects_to_visible_results_without_key_in_url(self,load):
+        response=self.client.post(self.path,{"action":"browse","channel_url":URL,"api_key":"PRIVATE-KEY"})
+        self.assertEqual(response.status_code,302)
+        self.assertTrue(response["Location"].endswith("#videos"))
+        self.assertNotIn("PRIVATE-KEY",response["Location"])
+        result=self.client.get(response["Location"])
+        self.assertContains(result,"1 public video loaded")
+        html=result.content.decode()
+        self.assertLess(html.index('id="videos"'),html.index('id="api_key"'))
+        self.assertNotIn("PRIVATE-KEY",html)
+
+    @patch("audit.youtube_views.load_channel")
+    def test_reopening_project_restores_preview_without_an_api_call(self,load):
+        self.preview()
+        response=self.client.get(self.path)
+        self.assertContains(response,"1 public video loaded")
+        load.assert_not_called()
+
+    def test_automatic_preview_restore_does_not_leak_between_users(self):
+        self.preview()
+        self.project.customer.members.add(self.other)
+        self.client.force_login(self.other)
+        response=self.client.get(self.path)
+        self.assertNotContains(response,'id="videos"')
+        self.assertNotContains(response,"Synthetic channel")
+
+    def test_automatic_preview_restore_ignores_expired_records(self):
+        preview=self.preview()
+        preview.expires_at=timezone.now()-timedelta(seconds=1)
+        preview.save()
+        response=self.client.get(self.path)
+        self.assertNotContains(response,'id="videos"')
+        self.assertContains(response,"Channel URL &amp; API key")
+
+    @patch("audit.youtube_views.load_channel",side_effect=YouTubeError("Test API rejection"))
+    def test_failed_reload_shows_error_not_old_success(self,load):
+        self.preview()
+        response=self.client.post(self.path,{"action":"browse","channel_url":URL,"api_key":"synthetic-key"})
+        self.assertContains(response,'id="load-error"')
+        self.assertContains(response,"Test API rejection")
+        self.assertNotContains(response,'id="videos"')
+
+    def test_forms_include_loading_and_validation_feedback(self):
+        response=self.client.get(self.path)
+        self.assertContains(response,'data-progress="Loading public videos')
+        self.assertContains(response,'aria-live="polite"')
+        self.assertContains(response,"Please complete the required fields")
+
+    @patch("audit.youtube_views.load_channel")
+    def test_empty_api_page_is_explicit(self,load):
+        load.return_value=dict(PAYLOAD,videos=[],next_page="")
+        response=self.client.post(self.path,{"action":"browse","channel_url":URL,"api_key":"synthetic-key"},follow=True)
+        self.assertContains(response,"0 public videos loaded")
+        self.assertContains(response,"YouTube returned no available public videos")
