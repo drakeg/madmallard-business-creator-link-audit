@@ -34,3 +34,13 @@ MAX_LINKS=max(1,min(100,int(os.getenv('MAX_LINKS','100'))))
 LYCHEE_BIN=os.getenv('LYCHEE_BIN','lychee')
 
 YOUTUBE_API_KEY=os.getenv("YOUTUBE_API_KEY", "")
+
+# Keep server errors diagnosable with DEBUG disabled. Never log POST bodies/keys.
+LOGGING={
+    'version':1,'disable_existing_loggers':False,
+    'handlers':{'app_console':{'class':'logging.StreamHandler'}},
+    'loggers':{
+        'audit':{'handlers':['app_console'],'level':'INFO','propagate':False},
+        'django.request':{'handlers':['app_console'],'level':'ERROR','propagate':False},
+    },
+}

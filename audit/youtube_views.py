@@ -1,6 +1,8 @@
 from datetime import timedelta
 import uuid
 import time
+import logging
+logger=logging.getLogger(__name__)
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -86,10 +88,13 @@ def channel_import(request, pk):
                 videos = {v["id"]:v for v in preview.payload["videos"]}
                 if any(v not in videos for v in selected): raise YouTubeError("Selection is not in this channel preview.")
                 prepared = []
+                extraction_notices = []
+                extraction_deadline = time.monotonic()+20
+                logger.info("YouTube import started project=%s selected=%s",project.pk,len(selected))
                 for video_id in selected:
                     video = videos[video_id]
                     if not video["description"].strip(): raise YouTubeError("A selected video has no description.")
-                    prepared.append((video, extract(video["description"], video["url"])))
+                    prepared.append((video, extract(video["description"], video["url"],notices=extraction_notices,deadline=extraction_deadline)))
                 with transaction.atomic():
                     Project.objects.filter(pk=project.pk).update(name=project.name)
                     if project.scans.exists(): raise YouTubeError("A scan was queued; sources are now locked.")
@@ -106,10 +111,18 @@ def channel_import(request, pk):
                         source = Source.objects.create(project=project, title=video["title"], original_url=video["url"], content=video["description"], youtube_video_id=video["id"], api_expires_at=min(preview.expires_at,timezone.now()+timedelta(days=29)))
                         Link.objects.bulk_create([Link(source=source, url=u, affiliate_parameters=parameters(u)) for u in links])
                     # Keep the short-lived catalogue so older-page navigation still works.
+                for notice in extraction_notices: messages.warning(request,notice)
+                logger.info("YouTube import completed project=%s imported=%s",project.pk,len(prepared))
                 messages.success(request, f"Imported {len(prepared)} YouTube description(s). Now queue the initial link scan.")
                 return redirect("youtube_imported",pk=project.pk)
             except (YouTubeError, ValueError) as exc:
                 error = str(exc)
+            except Exception:
+                reference = uuid.uuid4().hex[:10]
+                logger.exception("YouTube import failed project=%s reference=%s",project.pk,reference)
+                error = ("The import could not finish. Your loaded video list is still saved. "
+                         "Check Imported descriptions for anything already saved, then retry. "
+                         f"Error reference: {reference}")
         else:
             return HttpResponseBadRequest("Unknown import operation")
     if preview:

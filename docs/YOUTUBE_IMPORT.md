@@ -85,3 +85,16 @@ Loaded video lists remain available when navigating away; they no longer expire 
 A one-time migration extends existing unexpired lists to 29 days from their original
 retrieval time, without refetching or claiming their metadata was refreshed. Sign-in
 returns to a bookmarked results page using a same-host-validated return URL.
+
+## Import failure recovery
+Supplementary Lychee extraction has a five-second per-process cap and a shared 20-second
+import-batch budget. If it times out, cannot start, exits unsuccessfully or exhausts that
+budget, exact HTTP URL/href extraction remains available through the built-in parser.
+A warning is displayed after import so the operator can review link coverage. This does
+not validate destinations, products, codes or commission tracking; the scan still does
+its normal restricted HTTP checks afterward.
+
+Unexpected import failures preserve the loaded list, show a reference, and record a
+server-side traceback with that reference (no POST bodies/API keys). Check the Imported
+descriptions page before retrying; duplicate video IDs are skipped. Atomic database writes
+roll back a failed source/link batch. Request errors are now logged with DEBUG disabled.

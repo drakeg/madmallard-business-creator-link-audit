@@ -1,4 +1,5 @@
-import csv,io,re,subprocess,tempfile,html
+import csv,io,re,subprocess,tempfile,html,time,logging
+logger=logging.getLogger(__name__)
 from html.parser import HTMLParser
 from urllib.parse import urlsplit,urljoin
 from django.conf import settings
@@ -7,8 +8,13 @@ class Anchors(HTMLParser):
     def handle_starttag(self,tag,attrs):
         if tag=='a':
             self.urls += [v for k,v in attrs if k=='href' and v]
-def extract(content,base=''):
-    parser=Anchors(); parser.feed(content)
+def extract(content,base='',*,notices=None,deadline=None):
+    parser=Anchors()
+    try: parser.feed(content)
+    except (AssertionError,ValueError):
+        logger.warning('Malformed source markup; continuing with literal URL extraction')
+        message='Source markup was malformed; review the imported link list for coverage.'
+        if notices is not None and message not in notices: notices.append(message)
     raw=re.findall(r'https?://[^\s<>"\x27]+',content)
     urls=[]
     for value in parser.urls+raw:
@@ -17,17 +23,32 @@ def extract(content,base=''):
         while value.endswith(')') and value.count(')')>value.count('('): value=value[:-1]
         if base: value=urljoin(base,value)
         if value.startswith(('http://','https://')) and value not in urls: urls.append(value)
-    # Lychee is used only in local dump-only mode on local source files. It never
-    # receives a remote input and never performs network checks in this service.
+    # Literal URLs/hrefs above are preserved even if the supplementary CLI fails.
+    # One import request gets a bounded helper budget, not 15 seconds per video.
     if urls:
-        with tempfile.NamedTemporaryFile(suffix='.html' if '<a ' in content.lower() else '.md',mode='w') as file:
-            file.write(content); file.flush()
-            completed=subprocess.run([settings.LYCHEE_BIN,'--dump','--no-progress','--',file.name],capture_output=True,text=True,timeout=15,check=False)
-            if completed.returncode != 0: raise ValueError('Lychee extraction failed; no sources imported')
-            # Favor Lychee-extracted exact source matches, retaining encoded query
-            # values. Keep fallback extraction for URLs excluded by Lychee defaults.
-            matches=[u for u in completed.stdout.splitlines() if u in urls]
-            urls=list(dict.fromkeys(matches+urls))
+        reason = None
+        remaining = 5 if deadline is None else min(5, deadline-time.monotonic())
+        if remaining <= 0:
+            reason = 'batch deadline'
+        else:
+            try:
+                with tempfile.NamedTemporaryFile(suffix='.html' if '<a ' in content.lower() else '.md',mode='w') as file:
+                    file.write(content); file.flush()
+                    completed=subprocess.run([settings.LYCHEE_BIN,'--dump','--no-progress','--',file.name],capture_output=True,text=True,errors='replace',timeout=remaining,check=False)
+                if completed.returncode == 0:
+                    matches=[u for u in completed.stdout.splitlines() if u in urls]
+                    urls=list(dict.fromkeys(matches+urls))
+                else:
+                    reason = 'nonzero exit'
+            except subprocess.TimeoutExpired:
+                reason = 'timeout'
+            except (OSError,UnicodeError,subprocess.SubprocessError):
+                reason = 'unavailable helper'
+        if reason:
+            message = 'Some links used the built-in URL parser because Lychee was unavailable or timed out. Review the imported link list for coverage before scanning.'
+            if notices is not None and message not in notices: notices.append(message)
+            logger.warning('Supplementary Lychee extraction skipped: %s',reason)
+
     return urls
 
 def parameters(url):

@@ -104,3 +104,22 @@ have been performed. Unit network cases are controlled simulations, not unsafe n
   Existing video lists were preserved and their displayed expiry was verified.
 - No API key was accessed and no additional YouTube API calls were required. Browser
   visual/click execution remains unverified; these were server and HTTP checks.
+
+## Reported import HTTP 500 — November 16, 2026
+- Confirmed an HTTP 500 in the live access log, but the old logging configuration had not
+  retained its Django traceback. The original failure was not reproduced; the exact cause
+  is therefore not established. All 50 stored descriptions extracted successfully during
+  diagnosis, and a 20-video import succeeded in a disposable database copy before the fix.
+- Added bounded helper execution and visible fallback extraction warnings, malformed-markup
+  recovery, import failure references and server traceback logging with DEBUG disabled.
+  Existing transaction/duplicate guards remain in place; keys/POST bodies are not logged.
+- All 78 tests passed, including timeout/missing/nonzero helper recovery, batch-budget expiry,
+  warning deduplication, malformed markup, rollback on database failure and safe unexpected
+  error handling, plus the prior isolation/navigation/network/backup checks.
+- After deployment, two independent disposable copies of the real local database completed
+  CSRF-protected, URL-encoded imports of 20 stored video descriptions: normal extraction,
+  and injected Lychee timeouts. Both reached the imported-description page; the timeout
+  run showed its fallback warning and preserved URL data. Copies were removed afterward.
+- Live source/report data remained unchanged; a backup was taken before deployment. No
+  YouTube API calls or external writes were needed. This does not claim that the user's
+  exact original selection/error was reproduced or that a real browser click was tested.
