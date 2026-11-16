@@ -13,11 +13,14 @@ https://www.youtube.com/@madmallardsadventures
    create Google Cloud projects, enable billing, purchase anything or raise quotas.
 4. Click Load channel videos, select up to the remaining source limit (maximum 20), confirm
    ownership/permission and retention terms, then Import selected descriptions.
-5. Successful loads redirect to a visible video-count/results section above setup. Returning
+5. Successful loads open the dedicated **Loaded videos** page. Bookmark its URL or use
+   **Your results → View loaded videos** on the project. Each saved page has a stable URL. Returning
    to the same project restores the latest unexpired preview for your account, without
    another API call. Loading indicators, explicit empty/error states, selection counts and
    select-first/clear controls make the current step visible.
-6. Follow Open project & queue link scan. The existing scanner checks up to 100 unique
+6. Importing descriptions opens the dedicated **Imported descriptions & links** page.
+   Reopen it from **Your results → View imported descriptions**. Start the initial scan
+   there, then reopen the report from **Your results → View latest scan report**. The existing scanner checks up to 100 unique
    outbound URLs while keeping every video's title, watch URL and original description.
 7. Browse older uploads 50 per page. Import a selection before moving to the next page.
    Repeated imports skip existing video IDs. Only public videos from the resolved channel
@@ -42,12 +45,12 @@ scraping, affiliate-ID change or publication is performed.
 
 Requests use audit.network's DNS/IP validation and TLS-hostname pinning, a fixed Google API
 host, an API-key header (not a URL parameter), no redirects and a 1 MB response cap. API and
-transport errors are sanitized. No new runtime dependency is needed. Transient preview IDs
-are scoped to both the logged-in user and project and expire after 30 minutes. Imports are
+transport errors are sanitized. No new runtime dependency is needed. Saved video-list IDs
+are scoped to both the logged-in user and project and expire 29 days after retrieval. Imports are
 transactional, respect frozen sources/project limits and preserve encoded affiliate values.
 
 ## Retention and deletion
-Imported YouTube source metadata has a 29-day lifetime (under Google's 30-day refresh/delete
+Imported YouTube source metadata expires no later than its originating saved list, with a maximum 29-day lifetime (under Google's 30-day refresh/delete
 window). On subsequent app requests, expired previews and expired API sources are deleted;
 source deletion also removes their links and associated result rows. Owner-pasted/uploaded
 sources are unaffected. This is request-triggered cleanup, not a new scheduled task. An idle
@@ -76,3 +79,9 @@ provenance, deduplication, encoded parameters, consent, expiry/deletion, key red
 CSRF. Real extraction is also checked in the Docker image. No app-specific API key was
 available at implementation time; live Mad Mallards Adventures catalogue retrieval and
 actual channel audit must not be claimed until an authorized key is supplied and exercised.
+
+Loaded video lists remain available when navigating away; they no longer expire after
+30 minutes. Older saved pages are not removed merely because another page was loaded.
+A one-time migration extends existing unexpired lists to 29 days from their original
+retrieval time, without refetching or claiming their metadata was refreshed. Sign-in
+returns to a bookmarked results page using a same-host-validated return URL.

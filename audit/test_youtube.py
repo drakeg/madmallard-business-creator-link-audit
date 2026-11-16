@@ -162,7 +162,8 @@ class YouTubeWorkflowTests(TestCase):
         result=self.client.get(response["Location"])
         self.assertContains(result,"1 public video loaded")
         html=result.content.decode()
-        self.assertLess(html.index('id="videos"'),html.index('id="api_key"'))
+        self.assertIn('/youtube/results/',response['Location'])
+        self.assertNotIn('id="api_key"',html)
         self.assertNotIn("PRIVATE-KEY",html)
 
     @patch("audit.youtube_views.load_channel")
@@ -208,3 +209,73 @@ class YouTubeWorkflowTests(TestCase):
         response=self.client.post(self.path,{"action":"browse","channel_url":URL,"api_key":"synthetic-key"},follow=True)
         self.assertContains(response,"0 public videos loaded")
         self.assertContains(response,"YouTube returned no available public videos")
+
+    def test_dedicated_results_page_restores_list_and_hides_setup(self):
+        preview=self.preview()
+        response=self.client.get(self.path+"results/")
+        self.assertContains(response,"1 public video loaded")
+        self.assertNotContains(response,'id="api_key"')
+        self.assertContains(response,'View imported descriptions')
+        self.assertContains(response,"?preview="+str(preview.pk))
+
+    def test_project_has_results_return_links(self):
+        self.preview()
+        response=self.client.get(f"/projects/{self.project.pk}/")
+        self.assertContains(response,self.path+"results/")
+        self.assertContains(response,self.path+"imported/")
+        self.assertContains(response,"View loaded videos")
+        self.assertContains(response,"View imported descriptions (0)")
+
+    @patch("audit.youtube_views.extract",return_value=["https://example.com"])
+    def test_import_opens_saved_descriptions_page(self,extract):
+        preview=self.preview()
+        response=self.client.post(self.path,{"action":"import","preview":preview.pk,"videos":[VIDEO],"authorized":"on"})
+        self.assertRedirects(response,self.path+"imported/")
+        self.assertContains(self.client.get(self.path+"imported/"),"Gear")
+        self.assertContains(self.client.get(self.path+"imported/"),"Start initial link scan")
+
+    def test_dedicated_pages_block_other_customer(self):
+        self.preview()
+        self.client.force_login(self.other)
+        for ending in ["results/","imported/"]:
+            self.assertEqual(self.client.get(self.path+ending).status_code,404)
+
+    def test_empty_results_page_has_recovery_link(self):
+        response=self.client.get(self.path+"results/")
+        self.assertContains(response,"No saved video list is available yet")
+        self.assertContains(response,self.path+"?new=1")
+
+    def test_reload_link_opens_key_form_instead_of_restored_preview(self):
+        self.preview()
+        response=self.client.get(self.path+"?new=1")
+        self.assertContains(response,'id="api_key"')
+        self.assertNotContains(response,'id="videos"')
+
+    @patch("audit.youtube_views.load_channel",return_value=PAYLOAD)
+    def test_new_loaded_lists_last_29_days_not_30_minutes(self,load):
+        before=timezone.now()
+        self.client.post(self.path,{"action":"browse","channel_url":URL,"api_key":"test-key"})
+        preview=YouTubePreview.objects.get()
+        self.assertGreaterEqual(preview.expires_at,before+timedelta(days=29))
+        self.assertLess(preview.expires_at,timezone.now()+timedelta(days=29,minutes=1))
+
+    @patch("audit.youtube_views.extract",return_value=[])
+    def test_late_import_does_not_extend_api_metadata_lifetime(self,extract):
+        preview=self.preview()
+        preview.expires_at=timezone.now()+timedelta(days=1)
+        preview.save()
+        self.client.post(self.path,{"action":"import","preview":preview.pk,"videos":[VIDEO],"authorized":"on"})
+        self.assertEqual(Source.objects.get().api_expires_at,preview.expires_at)
+
+    def test_login_returns_to_bookmarked_results(self):
+        self.client.logout()
+        destination=self.path+"results/"
+        response=self.client.get("/login/?next="+destination)
+        self.assertContains(response,'name="next"')
+        response=self.client.post("/login/",{"username":"owner","password":"a-long-test-password","next":destination})
+        self.assertRedirects(response,destination)
+
+    def test_login_rejects_external_return_url(self):
+        self.client.logout()
+        response=self.client.post("/login/",{"username":"owner","password":"a-long-test-password","next":"https://evil.example/results"})
+        self.assertEqual(response["Location"],"/")

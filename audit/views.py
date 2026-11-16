@@ -12,8 +12,9 @@ from django.db.models import Count,Q
 from django.http import HttpResponse,HttpResponseBadRequest,StreamingHttpResponse
 from django.shortcuts import render,redirect,get_object_or_404
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
-from .models import Customer,Project,Source,Link,Scan,Result,LoginAttempt
+from .models import Customer,Project,Source,Link,Scan,Result,LoginAttempt,YouTubePreview
 from .forms import SourceForm,AccountForm,ProfileForm,ReviewForm
 from .ingest import extract,uploaded,parameters
 from .network import fetch
@@ -23,7 +24,9 @@ def projects(user):
 def project_for(request,pk): return get_object_or_404(projects(request.user),pk=pk)
 def scan_for(request,pk): return get_object_or_404(Scan.objects.filter(project__in=projects(request.user)),pk=pk)
 def login_view(request):
-    if request.user.is_authenticated: return redirect('/')
+    next_url=request.POST.get('next') or request.GET.get('next') or '/'
+    if not url_has_allowed_host_and_scheme(next_url,allowed_hosts={request.get_host()},require_https=request.is_secure()): next_url='/'
+    if request.user.is_authenticated: return redirect(next_url)
     error=''
     if request.method=='POST':
         username=request.POST.get('username','')[:150]
@@ -34,9 +37,9 @@ def login_view(request):
         else:
             user=authenticate(request,username=username,password=request.POST.get('password',''))
             if user:
-                login(request,user); attempt.delete(); return redirect('/')
+                login(request,user); attempt.delete(); return redirect(next_url)
             attempt.failures+=1; attempt.save(); error='Sign-in failed. Check your username and password.'
-    return render(request,'audit/login.html',{'error':error})
+    return render(request,'audit/login.html',{'error':error,'next_url':next_url})
 @login_required
 def dashboard(request):
     qs=projects(request.user).select_related('customer').annotate(source_count=Count('sources',distinct=True),scan_count=Count('scans',distinct=True)).order_by('-created')
@@ -86,7 +89,7 @@ def project(request,pk):
             messages.success(request,f'Imported {len(rows)} source(s); original content and link associations preserved.')
             return redirect('project',pk=p.pk)
         except Exception as exc: form.add_error(None,str(exc)[:500])
-    return render(request,'audit/project.html',{'project':p,'form':form,'sources':p.sources.prefetch_related('links'),'scans':p.scans.order_by('-created'),'max_sources':settings.MAX_SOURCES,'max_links':settings.MAX_LINKS})
+    return render(request,'audit/project.html',{'project':p,'form':form,'sources':p.sources.prefetch_related('links'),'scans':p.scans.order_by('-created'),'max_sources':settings.MAX_SOURCES,'max_links':settings.MAX_LINKS,'youtube_preview':YouTubePreview.objects.filter(project=p,user=request.user,expires_at__gt=timezone.now()).order_by('-expires_at').first(),'youtube_import_count':p.sources.exclude(youtube_video_id='').count(),'latest_scan':p.scans.order_by('-created').first()})
 @login_required
 @require_POST
 def start_scan(request,pk):

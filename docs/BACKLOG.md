@@ -36,3 +36,7 @@ P2: Validate $149 demand through owner-approved pilot activity; outreach is not 
 - YouTube load results now appear before setup, with a visible count and selection controls.
   Returning to a project restores its current user-scoped preview; success redirects to
   results and empty/error/loading states are explicit. Regression tests included.
+
+- Dedicated Loaded videos / Imported descriptions pages and prominent project return
+  links now separate import stages from scan reports. Lists survive navigation for 29 days;
+  saved-page links and safe bookmark login returns are covered by regression tests.

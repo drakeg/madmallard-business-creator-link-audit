@@ -88,3 +88,19 @@ have been performed. Unit network cases are controlled simulations, not unsafe n
   and 5 restored each existing 50-video preview above the API-key form. No key was
   re-entered/retrieved and no YouTube API retry was made. Frontend script syntax passed
   Node --check; this is not a browser execution test.
+
+## Dedicated results navigation follow-up — November 16, 2026
+- Added separate loaded-video and imported-description pages, stable result URLs,
+  project-top return links, saved-page history, and safe bookmarked-page login returns.
+  Successful loading/importing redirects to the appropriate dedicated page.
+- Saved lists are retained for 29 days from retrieval. Existing unexpired lists were
+  migrated using their original 30-minute expiration to recover the retrieval timestamp.
+  Late imports cannot extend API-derived data beyond the saved list's expiry.
+- All 69 tests passed in the rebuilt image, covering result navigation, customer isolation,
+  safe login redirects, correct post-import redirects, retention, expiry and prior checks.
+  Migration drift check passed; live data was backed up before migration.
+- Actual LAN HTTP checks passed for projects 3 and 5: project return links, dedicated
+  50-video pages, imported-description pages, and login returning to bookmarked results.
+  Existing video lists were preserved and their displayed expiry was verified.
+- No API key was accessed and no additional YouTube API calls were required. Browser
+  visual/click execution remains unverified; these were server and HTTP checks.
