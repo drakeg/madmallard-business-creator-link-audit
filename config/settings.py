@@ -5,7 +5,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'tests-only-do-not-use')
 DEBUG = False
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver').split(',')
 INSTALLED_APPS = ['django.contrib.auth','django.contrib.contenttypes','django.contrib.sessions','django.contrib.messages','django.contrib.staticfiles','audit']
-MIDDLEWARE = ['django.middleware.security.SecurityMiddleware','django.contrib.sessions.middleware.SessionMiddleware','django.middleware.common.CommonMiddleware','django.middleware.csrf.CsrfViewMiddleware','django.contrib.auth.middleware.AuthenticationMiddleware','django.contrib.messages.middleware.MessageMiddleware','django.middleware.clickjacking.XFrameOptionsMiddleware']
+MIDDLEWARE = ['django.middleware.security.SecurityMiddleware','django.contrib.sessions.middleware.SessionMiddleware','django.middleware.common.CommonMiddleware','django.middleware.csrf.CsrfViewMiddleware','django.contrib.auth.middleware.AuthenticationMiddleware','audit.youtube_views.YouTubeRetentionMiddleware','django.contrib.messages.middleware.MessageMiddleware','django.middleware.clickjacking.XFrameOptionsMiddleware']
 ROOT_URLCONF = 'config.urls'
 TEMPLATES = [{'BACKEND':'django.template.backends.django.DjangoTemplates','DIRS':[], 'APP_DIRS':True,'OPTIONS':{'context_processors':['django.template.context_processors.request','django.contrib.auth.context_processors.auth','django.contrib.messages.context_processors.messages']}}]
 DATABASES = {'default':{'ENGINE':'django.db.backends.sqlite3','NAME':os.getenv('DB_PATH',str(BASE_DIR/'db.sqlite3')),'OPTIONS':{'timeout':30}}}
@@ -32,3 +32,5 @@ SCAN_RETRIES=max(0,min(3,int(os.getenv('SCAN_RETRIES','1'))))
 MAX_SOURCES=max(1,min(20,int(os.getenv('MAX_SOURCES','20'))))
 MAX_LINKS=max(1,min(100,int(os.getenv('MAX_LINKS','100'))))
 LYCHEE_BIN=os.getenv('LYCHEE_BIN','lychee')
+
+YOUTUBE_API_KEY=os.getenv("YOUTUBE_API_KEY", "")

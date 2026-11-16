@@ -53,3 +53,19 @@ have been performed. Unit network cases are controlled simulations, not unsafe n
   committed; no schedules, off-device storage or cloud resources were created.
 - Full replacement-volume recovery, disk-loss recovery and RPO/RTO remain untested. Prior
   browser/mobile visual QA limitations still apply.
+
+## YouTube channel import follow-up — November 16, 2026
+- All 52 tests passed in the updated Docker image, including official API request/URL
+  normalization, header-only key handling, sanitized errors, user/project preview isolation,
+  paging tokens, selected-description import, atomic limits, permission/CSRF checks, exact
+  encoded affiliate values, duplicate prevention, source locking, expiry and confirmed deletion.
+- Migration creation and drift checks passed; the existing local data was backed up before
+  migration. The actual Mad Mallards Adventures project import page and missing-key setup
+  flow returned successfully with the supplied handle prefilled.
+- Running-image fixture workflow exercised preview/import with synthetic API metadata and
+  actual Lychee extraction. It preserved description content, watch URL, video ID, expiry
+  and exact query values. Only its temporary synthetic project was removed.
+- No live YouTube channel catalogue was retrieved: this app has no API key configured.
+  A real channel import/audit, live quota/error behavior and browser/mobile visual QA remain
+  unverified. API fixtures must not be described as live YouTube validation. No Google
+  account authorization, cloud deployment, new schedules or cross-app integration occurred.
