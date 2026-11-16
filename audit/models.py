@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from django.contrib.auth.models import User
 class Customer(models.Model):
@@ -7,6 +8,7 @@ class Customer(models.Model):
 class Project(models.Model):
     customer=models.ForeignKey(Customer,on_delete=models.CASCADE)
     name=models.CharField(max_length=160)
+    youtube_channel_url=models.TextField(blank=True)
     created=models.DateTimeField(auto_now_add=True)
 class Source(models.Model):
     project=models.ForeignKey(Project,on_delete=models.CASCADE,related_name='sources')
@@ -14,6 +16,8 @@ class Source(models.Model):
     original_url=models.TextField(blank=True)
     content=models.TextField()
     codes=models.TextField(blank=True)
+    youtube_video_id=models.CharField(max_length=11,blank=True)
+    api_expires_at=models.DateTimeField(null=True,blank=True,db_index=True)
     created=models.DateTimeField(auto_now_add=True)
 class Link(models.Model):
     source=models.ForeignKey(Source,on_delete=models.CASCADE,related_name='links')
@@ -57,3 +61,10 @@ class LoginAttempt(models.Model):
     key=models.CharField(max_length=64,unique=True)
     failures=models.PositiveIntegerField(default=0)
     updated=models.DateTimeField(auto_now=True)
+
+class YouTubePreview(models.Model):
+    id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
+    project=models.ForeignKey(Project,on_delete=models.CASCADE)
+    user=models.ForeignKey(User,on_delete=models.CASCADE)
+    payload=models.JSONField(default=dict)
+    expires_at=models.DateTimeField(db_index=True)

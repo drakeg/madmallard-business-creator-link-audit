@@ -11,9 +11,14 @@
 - Confirmed individual/bulk history deletion, persistent data, committed migrations.
 - Isolated local Compose, configurable ports/limits; undeployed cloud skeletons and notices.
 
+## Local follow-up completed
+- Manual consistent SQLite backup and isolated restore-verification commands. Thirty tests passed;
+  real snapshot integrity, table counts, restored sign-in and report access verified on the Mac.
+  Live data was not overwritten. Backups stay local; no schedules created.
+
 ## Next: before accepting production customer data
 P1: End-to-end real-browser accessibility/mobile audit and cross-browser printable report QA.
-P1: Automated backup/restore exercise with documented RPO/RTO; data retention/export policy.
+P1: Off-device backup, actual replacement-stack recovery exercise and documented RPO/RTO; data retention/export policy.
 P1: Invitations/reset, MFA, account disable/membership edit and admin action audit trail.
 P1: Stronger global/per-IP throttles, whole-job deadline, DNS timeout and egress firewall tests.
 P1: PostgreSQL migration, durable job leasing and graceful restart recovery before scaling.
@@ -22,5 +27,7 @@ P1: Validate ECS/EKS manifests against actual target versions and security polic
 P2: Source revision model so corrected descriptions can stay in the same project with full history.
 P2: Explicit discount-code entities and per-code evidence; review counting by unique commercial URL.
 P2: More robust Markdown reference/autolink extraction and customer-facing clean report templates.
-P2: Approved YouTube API workflow and carefully scoped read permissions; no scraping assumption.
+Implemented: public YouTube channel URL import through official list APIs, key setup,
+  per-user/project previews, selected-description import, pagination and retention/deletion.
+  Live channel import requires an app-specific API key; private-video OAuth remains future work.
 P2: Validate $149 demand through owner-approved pilot activity; outreach is not authorized here.

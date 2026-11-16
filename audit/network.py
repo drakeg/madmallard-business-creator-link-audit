@@ -26,7 +26,7 @@ def resolve_public(url):
             raise UnsafeURL('Private, reserved, translated or metadata destination blocked')
     return p,ips[0],port
 
-def fetch(url, read_body=False):
+def fetch(url, read_body=False, *, allowed_content_types=("text/", "html"), request_headers=None, follow_redirects=True):
     chain=[]
     for hop in range(9):
         try: p,ip,port=resolve_public(url)
@@ -40,19 +40,19 @@ def fetch(url, read_body=False):
         try:
             target=p.path or '/'
             if p.query: target+='?'+p.query
-            response=pool.urlopen('GET',target,headers={'Host':p.netloc,'User-Agent':'MadMallardLinkAudit/0.1 (+owner-requested link check)','Accept':'text/html,*/*;q=0.5','Accept-Encoding':'identity'},redirect=False,preload_content=False,retries=False)
+            response=pool.urlopen('GET',target,headers={'Host':p.netloc,'User-Agent':'MadMallardLinkAudit/0.1 (+owner-requested link check)','Accept':'text/html,application/json,*/*;q=0.5','Accept-Encoding':'identity',**(request_headers or {})},redirect=False,preload_content=False,retries=False)
             status=response.status
             location=response.headers.get('Location')
             chain.append({'url':url,'status':status,'location':location or ''})
-            if status in (301,302,303,307,308) and location:
+            if follow_redirects and status in (301,302,303,307,308) and location:
                 url=urljoin(url,location)
                 continue
             body=b''
             if read_body:
                 body=response.read(1_000_001,decode_content=False)
                 if len(body)>1_000_000: raise ValueError('Public page exceeds 1 MB limit')
-                if 'text/' not in response.headers.get('Content-Type','').lower() and 'html' not in response.headers.get('Content-Type','').lower():
-                    raise ValueError('Public retrieval requires a text/HTML response')
+                if not any(t in response.headers.get('Content-Type','').lower() for t in allowed_content_types):
+                    raise ValueError('Unexpected response content type')
             return status,url,chain,body
         except Exception as exc:
             exc.audit_chain=chain
