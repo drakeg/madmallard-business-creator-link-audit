@@ -31,3 +31,12 @@ Implemented: public YouTube channel URL import through official list APIs, key s
   per-user/project previews, selected-description import, pagination and retention/deletion.
   Live channel import requires an app-specific API key; private-video OAuth remains future work.
 P2: Validate $149 demand through owner-approved pilot activity; outreach is not authorized here.
+
+## Local usability fix
+- YouTube load results now appear before setup, with a visible count and selection controls.
+  Returning to a project restores its current user-scoped preview; success redirects to
+  results and empty/error/loading states are explicit. Regression tests included.
+
+- Dedicated Loaded videos / Imported descriptions pages and prominent project return
+  links now separate import stages from scan reports. Lists survive navigation for 29 days;
+  saved-page links and safe bookmark login returns are covered by regression tests.

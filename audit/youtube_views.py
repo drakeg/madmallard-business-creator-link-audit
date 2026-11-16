@@ -35,7 +35,14 @@ class YouTubeRetentionMiddleware:
 def channel_import(request, pk):
     project = project_for(request, pk)
     url = request.POST.get("channel_url", request.GET.get("channel_url", project.youtube_channel_url))
-    preview = scoped_preview(request.GET["preview"], project, request.user) if request.GET.get("preview") else None
+    preview = None
+    if request.method == "GET":
+        if request.GET.get("preview"):
+            preview = scoped_preview(request.GET["preview"], project, request.user)
+        elif not request.GET.get("channel_url") and not request.GET.get("new"):
+            preview = YouTubePreview.objects.filter(project=project, user=request.user, expires_at__gt=timezone.now()).order_by("-expires_at").first()
+        if preview:
+            url = preview.payload["channel_url"]
     error = ""
     if request.method == "POST":
         action = request.POST.get("action", "browse")
@@ -59,11 +66,12 @@ def channel_import(request, pk):
                     raise YouTubeError("Wait five seconds before loading another page.")
                 if key: request.session["youtube_last_load"] = time.time()
                 payload = load_channel(url, key, page_token)
-                old = list(YouTubePreview.objects.filter(user=request.user, project=project).order_by("-expires_at").values_list("pk", flat=True))[4:]
-                YouTubePreview.objects.filter(pk__in=old).delete()
-                preview = YouTubePreview.objects.create(user=request.user, project=project, payload=payload, expires_at=timezone.now()+timedelta(minutes=30))
+                preview = YouTubePreview.objects.create(user=request.user, project=project, payload=payload, expires_at=timezone.now()+timedelta(days=29))
                 project.youtube_channel_url = payload["channel_url"]
                 project.save(update_fields=["youtube_channel_url"])
+                count = len(payload["videos"])
+                messages.success(request, f"Loaded {count} public videos from {payload['channel_title']}. Select descriptions below to import.")
+                return redirect(f"/projects/{project.pk}/youtube/results/?preview={preview.pk}#videos")
             except YouTubeError as exc:
                 error = str(exc)
         elif action == "import":
@@ -95,11 +103,11 @@ def channel_import(request, pk):
                     if len(urls) > settings.MAX_LINKS:
                         raise YouTubeError("These descriptions exceed the 100-unique-link project limit. Select fewer videos.")
                     for video, links in prepared:
-                        source = Source.objects.create(project=project, title=video["title"], original_url=video["url"], content=video["description"], youtube_video_id=video["id"], api_expires_at=timezone.now()+timedelta(days=29))
+                        source = Source.objects.create(project=project, title=video["title"], original_url=video["url"], content=video["description"], youtube_video_id=video["id"], api_expires_at=min(preview.expires_at,timezone.now()+timedelta(days=29)))
                         Link.objects.bulk_create([Link(source=source, url=u, affiliate_parameters=parameters(u)) for u in links])
                     # Keep the short-lived catalogue so older-page navigation still works.
                 messages.success(request, f"Imported {len(prepared)} YouTube description(s). Now queue the initial link scan.")
-                return redirect(f"/projects/{project.pk}/youtube/?preview={preview.pk}")
+                return redirect("youtube_imported",pk=project.pk)
             except (YouTubeError, ValueError) as exc:
                 error = str(exc)
         else:
@@ -107,7 +115,7 @@ def channel_import(request, pk):
     if preview:
         existing = set(project.sources.exclude(youtube_video_id="").values_list("youtube_video_id", flat=True))
         for video in preview.payload["videos"]: video["imported"] = video["id"] in existing
-    return render(request, "audit/youtube.html", {"project":project, "channel_url":url, "preview":preview, "error":error, "configured":bool(settings.YOUTUBE_API_KEY), "remaining":max(0,settings.MAX_SOURCES-project.sources.count())})
+    return render(request, "audit/youtube.html", {"project":project, "channel_url":url, "preview":preview, "error":error,"results_page":request.method=="POST" and request.POST.get("action")=="import", "configured":bool(settings.YOUTUBE_API_KEY), "remaining":max(0,settings.MAX_SOURCES-project.sources.count())})
 
 @login_required
 def delete_youtube(request, pk):
@@ -125,3 +133,30 @@ def delete_youtube(request, pk):
         messages.success(request, f"Deleted {count} local YouTube sources and associated result rows. Nothing on YouTube changed.")
         return redirect("project", pk=pk)
     return render(request, "audit/youtube_delete.html", {"project":project, "count":sources.count()})
+
+
+@login_required
+def channel_results(request, pk):
+    project = project_for(request, pk)
+    previews = YouTubePreview.objects.filter(project=project,user=request.user,expires_at__gt=timezone.now()).order_by("-expires_at")
+    preview = scoped_preview(request.GET["preview"],project,request.user) if request.GET.get("preview") else previews.first()
+    if preview:
+        existing = set(project.sources.exclude(youtube_video_id="").values_list("youtube_video_id",flat=True))
+        for video in preview.payload["videos"]: video["imported"] = video["id"] in existing
+    return render(request,"audit/youtube.html",{
+        "project":project,"preview":preview,"results_page":True,"saved_previews":previews,
+        "channel_url":preview.payload["channel_url"] if preview else project.youtube_channel_url,
+        "configured":bool(settings.YOUTUBE_API_KEY),
+        "remaining":max(0,settings.MAX_SOURCES-project.sources.count()),
+    })
+
+
+@login_required
+def imported_descriptions(request, pk):
+    project = project_for(request, pk)
+    sources = project.sources.exclude(youtube_video_id="").prefetch_related("links")
+    return render(request,"audit/youtube_imported.html",{
+        "project":project,"sources":sources,
+        "unique_links":Link.objects.filter(source__in=sources).values("url").distinct().count(),
+        "latest_scan":project.scans.order_by("-created").first(),
+    })

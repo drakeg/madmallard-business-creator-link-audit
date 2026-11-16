@@ -1,24 +1,63 @@
-{% extends 'audit/base.html' %}{% block content %}
+{% extends 'audit/base.html' %}
+{% block head %}<style>
+.video-feedback{background:#e2f2e8;border-left:5px solid #155e50;padding:16px 20px;border-radius:8px;margin:18px 0}
+.video-feedback strong{font-size:22px;display:block}.video-tools{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:12px 0}
+.video-options{background:white;border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:22px}
+[data-submit-status]{padding:12px;background:#fff3d6;border-radius:6px;font-weight:650}
+button:disabled{opacity:.65;cursor:wait}
+#videos{scroll-margin-top:20px}#load-error{border-left-color:#a33128}
+</style>{% endblock %}
+{% block content %}
 <p class="eyebrow"><a href="{% url 'project' project.pk %}">{{ project.name }}</a> / YouTube import</p>
-<h1>Start with your channel URL</h1><p><a class="button secondary" href="{% url 'project' project.pk %}">Open project & queue link scan</a></p>
-<p class="muted">Load public videos, select descriptions, then audit the links in them. {{ remaining }} source slots remain in this project.</p>
-{% if error %}<div class="notice" role="alert">{{ error }}</div>{% endif %}
-<div class="split"><section class="card"><h2>Load videos from YouTube</h2>
-<form method="post">{% csrf_token %}<input type="hidden" name="action" value="browse">
+<h1>{% if results_page %}Loaded channel videos{% elif preview %}Your channel videos are ready{% else %}Load your YouTube videos{% endif %}</h1>
+<div class="actions" style="margin-bottom:18px"><a class="button secondary" href="{% url 'project' project.pk %}">Back to project</a><a class="button secondary" href="{% url 'youtube_imported' project.pk %}">View imported descriptions</a><a href="{% url 'youtube_import' project.pk %}?new=1">Load or reload a channel</a></div><p class="muted">1. Load videos → 2. Select and import descriptions → 3. Queue the link scan.</p>
+{% if error %}<div id="load-error" class="notice" role="alert" tabindex="-1"><strong>Action needed</strong><p>{{ error }}</p></div>{% endif %}
+{% if preview %}
+<section class="card" id="videos" tabindex="-1" aria-labelledby="videos-heading">
+<div class="video-feedback" role="status"><strong id="videos-heading">{{ preview.payload.videos|length }} public video{{ preview.payload.videos|length|pluralize }} loaded</strong><span>{{ preview.payload.channel_title }} · Select up to {{ remaining }} descriptions below, then click Import selected descriptions.</span></div>
+<p class="count">This is the video preview, not a completed link scan. Saved until {{ preview.expires_at|date:'Y-m-d H:i' }} UTC. Returning to this project restores your preview until it expires.</p>
+<form method="post" action="{% url 'youtube_import' project.pk %}" data-progress="Importing selected descriptions and extracting their links…" data-video-selection data-limit="{{ remaining }}">
+{% csrf_token %}<input type="hidden" name="action" value="import"><input type="hidden" name="preview" value="{{ preview.pk }}"><input type="hidden" name="channel_url" value="{{ preview.payload.channel_url }}">
+<div class="video-tools"><button type="button" class="secondary" data-select-first>Select first {{ remaining }} available</button><button type="button" class="secondary" data-select-clear>Clear selection</button><strong data-selected-count role="status">0 selected</strong></div>
+<label><input type="checkbox" name="authorized" required> I own these descriptions or have permission to audit them. I understand API-imported sources and associated report rows expire by the displayed retention date, at most 29 days after retrieval, and are removed when this app is next used.</label>
+<div class="actions" style="margin:16px 0"><button type="submit">Import selected descriptions</button><a class="button secondary" href="{% url 'project' project.pk %}">Open project & queue link scan</a></div>
+<p data-submit-status role="status" aria-live="polite" hidden></p>
+<div class="table-wrap"><table><thead><tr><th>Select</th><th>Video</th><th>Published</th><th>Description</th></tr></thead><tbody>
+{% for video in preview.payload.videos %}<tr><td><input type="checkbox" name="videos" value="{{ video.id }}" aria-label="Select {{ video.title }}" {% if not video.description or video.imported %}disabled{% endif %}></td><td><a href="{{ video.url }}" target="_blank" rel="noopener noreferrer">{{ video.title }}</a>{% if video.imported %}<br><span class="pill">Already imported</span>{% endif %}</td><td>{{ video.published }}</td><td><details><summary>{% if video.description %}Read description{% else %}No description{% endif %}</summary><pre>{{ video.description }}</pre></details></td></tr>{% empty %}<tr><td colspan="4"><strong>YouTube returned no available public videos on this page.</strong> Try an older page if available, or check the channel URL below.</td></tr>{% endfor %}</tbody></table></div>
+<p><button type="submit">Import selected descriptions</button></p></form>
+{% if preview.payload.next_page %}<details><summary>Load the next page of older uploads</summary><form method="post" action="{% url 'youtube_import' project.pk %}" data-progress="Loading the next page of videos from YouTube…">{% csrf_token %}<input type="hidden" name="action" value="browse"><input type="hidden" name="channel_url" value="{{ preview.payload.channel_url }}"><input type="hidden" name="page" value="{{ preview.pk }}">{% if not configured %}<label for="older_key">API key for this request</label><input id="older_key" name="api_key" type="password" required autocomplete="off">{% endif %}<p><button type="submit" class="secondary">Load older videos</button></p><p data-submit-status role="status" aria-live="polite" hidden></p><p class="count">Import your selection before moving to another page. Already imported videos are skipped.</p></form></details>{% endif %}
+</section>
+{% endif %}
+{% if results_page and not preview %}<section class="card"><h2>No saved video list is available yet</h2><p>Load the channel to create a saved video list. If a previous list expired, you will need to reload it. Imported descriptions and scan reports have separate links on your project.</p><a class="button" href="{% url 'youtube_import' project.pk %}?new=1">Load channel videos</a></section>{% endif %}
+{% if saved_previews %}<details class="video-options"><summary>Previously loaded video pages</summary>{% for saved in saved_previews %}<p><a href="{% url 'youtube_results' project.pk %}?preview={{ saved.pk }}">{{ saved.payload.channel_title }} · {{ saved.payload.videos|length }} videos · retained until {{ saved.expires_at|date:'Y-m-d H:i' }} UTC</a></p>{% endfor %}</details>{% endif %}
+{% if not results_page %}<details class="video-options" {% if not preview %}open{% endif %}><summary>{% if preview %}Load a different channel or reload videos{% else %}Channel URL &amp; API key{% endif %}</summary>
+<form method="post" action="{% url 'youtube_import' project.pk %}" data-progress="Loading public videos from YouTube… Please wait; this can take several seconds.">
+{% csrf_token %}<input type="hidden" name="action" value="browse">
 <label for="channel_url">YouTube channel URL</label><input id="channel_url" name="channel_url" value="{{ channel_url }}" placeholder="https://www.youtube.com/@madmallardsadventures" required>
 <label for="api_key">YouTube Data API key {% if configured %}(optional: local key configured){% endif %}</label><input id="api_key" name="api_key" type="password" autocomplete="off" maxlength="256" {% if not configured %}required{% endif %}>
-<p class="count">The key is sent only to Google's official API in a header. A key entered here is used for this request and is not saved or included in the preview. With no local key configured, re-enter it to load older pages.</p>
-<button>Load channel videos</button></form></section>
-<section class="card"><h2>One-time setup</h2><ol><li>Open <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener noreferrer">YouTube Data API v3 in Google Cloud</a>.</li><li>Select your Google API project and enable YouTube Data API v3.</li><li>Create an API key and restrict it to YouTube Data API v3. Server-side requests must be allowed from this Mac; browser-referrer restrictions do not apply to this server workflow.</li><li>Paste that key in the field here. Keep within your API quota; no billing, purchases or quota increases are performed by this app.</li></ol>
-<p class="count">Optional local operator setup: set YOUTUBE_API_KEY in this app's .env and recreate only its web service. The app continues running locally; requests for public metadata go to YouTube.</p>
-<p>This imports public descriptions only. It does not sign into your Google account, access private videos, download videos or modify YouTube.</p></section></div>
-{% if preview %}<section class="card"><h2>{{ preview.payload.channel_title }}</h2><p class="url">{{ preview.payload.channel_url }}</p><p class="muted">Up to 50 public uploads on this page. Preview expires in 30 minutes. Select at most {{ remaining }} videos.</p>
-<form method="post">{% csrf_token %}<input type="hidden" name="action" value="import"><input type="hidden" name="preview" value="{{ preview.pk }}"><input type="hidden" name="channel_url" value="{{ preview.payload.channel_url }}">
-<div class="table-wrap"><table><thead><tr><th>Select</th><th>Video</th><th>Published</th><th>Description preview</th></tr></thead><tbody>
-{% for video in preview.payload.videos %}<tr><td><input type="checkbox" name="videos" value="{{ video.id }}" aria-label="Select {{ video.title }}" {% if not video.description or video.imported %}disabled{% endif %}></td><td><a href="{{ video.url }}" target="_blank" rel="noopener noreferrer">{{ video.title }}</a>{% if video.imported %}<br><span class="pill">Already imported</span>{% endif %}</td><td>{{ video.published }}</td><td><details><summary>{% if video.description %}Read description{% else %}No description{% endif %}</summary><pre>{{ video.description }}</pre></details></td></tr>{% empty %}<tr><td colspan="4">No public videos available on this page.</td></tr>{% endfor %}</tbody></table></div>
-<label><input type="checkbox" name="authorized" required> I own these descriptions or have permission to audit them. I understand API-imported sources and their associated report rows expire after 29 days and are removed when this local app is next used.</label>
-<p><button>Import selected descriptions</button></p></form>
-{% if preview.payload.next_page %}<details><summary>Load the next page of older uploads</summary><form method="post">{% csrf_token %}<input type="hidden" name="action" value="browse"><input type="hidden" name="channel_url" value="{{ preview.payload.channel_url }}"><input type="hidden" name="page" value="{{ preview.pk }}">{% if not configured %}<label for="older_key">API key for this request</label><input id="older_key" name="api_key" type="password" required autocomplete="off">{% endif %}<p><button class="secondary">Load older videos</button></p><p class="count">Import selected videos before loading the next page. Videos imported already are skipped on repeat import.</p></form></details>{% endif %}
-</section>{% endif %}
-<section class="card"><h2>YouTube data & privacy</h2><p>This tool uses the YouTube API Services. By using this import, you agree to <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener">YouTube's Terms of Service</a>. See the <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Privacy Policy</a> and <a href="https://developers.google.com/youtube/terms/developer-policies" target="_blank" rel="noopener">YouTube developer policies</a>.</p><p>Public titles, descriptions and video URLs are stored locally for the audit. Temporary video previews expire after 30 minutes; imported metadata expires after 29 days. Expired records are removed on application requests. Local deletion does not change YouTube. Your API key is never stored in previews, customer records or reports. This workflow uses no OAuth tokens or Google-account access. Operator-created backups and downloaded reports require corresponding retention management.</p><a href="{% url 'delete_youtube' project.pk %}">Delete this project's locally imported YouTube data</a></section>
+<p class="count">The key is used for this request only and is not saved in your preview or reports.</p>
+<button type="submit">Load channel videos</button><p data-submit-status role="status" aria-live="polite" hidden></p>
+</form></details>
+<details class="video-options"><summary>Need help creating or configuring an API key?</summary><ol><li>Open <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener noreferrer">YouTube Data API v3 in Google Cloud</a>.</li><li>Select your API project and enable YouTube Data API v3.</li><li>Create a key restricted to YouTube Data API v3. Requests are sent by this Mac's server; browser-referrer restrictions do not work for this workflow.</li><li>Paste the key above. No billing, purchases or quota increases are performed by this app.</li></ol><p class="count">Optional operator setup: set YOUTUBE_API_KEY in this app's .env and recreate its web service. Without it, re-enter your key when loading another page. Public metadata only: no Google account sign-in, private videos, media downloads or YouTube changes.</p></details>
+{% endif %}<details class="video-options"><summary>YouTube data, privacy & local deletion</summary><p>This tool uses YouTube API Services. By using import, you agree to <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener">YouTube's Terms of Service</a>. See the <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Privacy Policy</a> and <a href="https://developers.google.com/youtube/terms/developer-policies" target="_blank" rel="noopener">YouTube developer policies</a>.</p><p>Public titles, descriptions and video URLs are stored locally. Loaded video lists are kept for 29 days from retrieval; imported metadata expires no later than the list it came from. Expired records are removed on app requests. Local deletion does not change YouTube. Keys are not saved to previews, customer records or reports. Backups and downloaded reports require corresponding retention management.</p><a href="{% url 'delete_youtube' project.pk %}">Delete this project's locally imported YouTube data</a></details>
+<script>
+document.querySelectorAll('form[data-progress]').forEach(form=>{
+ const status=form.querySelector('[data-submit-status]');
+ form.addEventListener('invalid',()=>{status.hidden=false;status.textContent='Please complete the required fields in this section.';},true);
+ form.addEventListener('submit',event=>{
+  if(form.hasAttribute('data-video-selection')&&!form.querySelector('input[name="videos"]:checked')){event.preventDefault();status.hidden=false;status.textContent='Select at least one video before importing.';status.scrollIntoView({block:'center'});return;}
+  status.hidden=false;status.textContent=form.dataset.progress;form.setAttribute('aria-busy','true');
+  form.querySelectorAll('button[type="submit"]').forEach(button=>{button.disabled=true;});
+ });
+});
+document.querySelectorAll('[data-video-selection]').forEach(form=>{
+ const boxes=[...form.querySelectorAll('input[name="videos"]:not(:disabled)')],limit=Number(form.dataset.limit),counter=form.querySelector('[data-selected-count]');
+ const update=()=>{counter.textContent=boxes.filter(box=>box.checked).length+' selected / '+limit+' maximum';};
+ form.querySelector('[data-select-first]').addEventListener('click',()=>{boxes.forEach((box,index)=>box.checked=index<limit);update();});
+ form.querySelector('[data-select-clear]').addEventListener('click',()=>{boxes.forEach(box=>box.checked=false);update();});
+ boxes.forEach(box=>box.addEventListener('change',()=>{if(boxes.filter(item=>item.checked).length>limit){box.checked=false;counter.textContent='Maximum '+limit+' videos. Clear a selection first.';}else{update();}}));update();
+});
+window.addEventListener('pageshow',()=>{document.querySelectorAll('form[data-progress]').forEach(form=>{form.removeAttribute('aria-busy');form.querySelectorAll('button[type="submit"]').forEach(button=>button.disabled=false);const status=form.querySelector('[data-submit-status]');status.hidden=true;});});
+const error=document.getElementById('load-error');if(error){error.focus();}
+</script>
 {% endblock %}

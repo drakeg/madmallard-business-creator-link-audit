@@ -68,7 +68,7 @@ class YouTubeWorkflowTests(TestCase):
         self.assertEqual(Source.objects.count(),0)
     @patch("audit.youtube_views.load_channel",return_value=PAYLOAD)
     def test_browse_does_not_persist_key(self,load):
-        response=self.client.post(self.path,{"action":"browse","channel_url":URL,"api_key":"SECRET-KEY"})
+        response=self.client.post(self.path,{"action":"browse","channel_url":URL,"api_key":"SECRET-KEY"},follow=True)
         self.assertEqual(response.status_code,200)
         self.assertNotContains(response,"SECRET-KEY")
         self.assertNotIn("SECRET-KEY",json.dumps(YouTubePreview.objects.get().payload))
@@ -149,6 +149,133 @@ class YouTubeWorkflowTests(TestCase):
     @patch("audit.youtube_views.load_channel",return_value=PAYLOAD)
     def test_older_page_uses_scoped_server_token(self,load):
         preview=self.preview()
-        response=self.client.post(self.path,{"action":"browse","channel_url":URL,"page":preview.pk,"api_key":"synthetic-key","page_token":"forged"})
+        response=self.client.post(self.path,{"action":"browse","channel_url":URL,"page":preview.pk,"api_key":"synthetic-key","page_token":"forged"},follow=True)
         self.assertEqual(response.status_code,200)
         self.assertEqual(load.call_args.args[2],"older")
+
+    @patch("audit.youtube_views.load_channel",return_value=PAYLOAD)
+    def test_success_redirects_to_visible_results_without_key_in_url(self,load):
+        response=self.client.post(self.path,{"action":"browse","channel_url":URL,"api_key":"PRIVATE-KEY"})
+        self.assertEqual(response.status_code,302)
+        self.assertTrue(response["Location"].endswith("#videos"))
+        self.assertNotIn("PRIVATE-KEY",response["Location"])
+        result=self.client.get(response["Location"])
+        self.assertContains(result,"1 public video loaded")
+        html=result.content.decode()
+        self.assertIn('/youtube/results/',response['Location'])
+        self.assertNotIn('id="api_key"',html)
+        self.assertNotIn("PRIVATE-KEY",html)
+
+    @patch("audit.youtube_views.load_channel")
+    def test_reopening_project_restores_preview_without_an_api_call(self,load):
+        self.preview()
+        response=self.client.get(self.path)
+        self.assertContains(response,"1 public video loaded")
+        load.assert_not_called()
+
+    def test_automatic_preview_restore_does_not_leak_between_users(self):
+        self.preview()
+        self.project.customer.members.add(self.other)
+        self.client.force_login(self.other)
+        response=self.client.get(self.path)
+        self.assertNotContains(response,'id="videos"')
+        self.assertNotContains(response,"Synthetic channel")
+
+    def test_automatic_preview_restore_ignores_expired_records(self):
+        preview=self.preview()
+        preview.expires_at=timezone.now()-timedelta(seconds=1)
+        preview.save()
+        response=self.client.get(self.path)
+        self.assertNotContains(response,'id="videos"')
+        self.assertContains(response,"Channel URL &amp; API key")
+
+    @patch("audit.youtube_views.load_channel",side_effect=YouTubeError("Test API rejection"))
+    def test_failed_reload_shows_error_not_old_success(self,load):
+        self.preview()
+        response=self.client.post(self.path,{"action":"browse","channel_url":URL,"api_key":"synthetic-key"})
+        self.assertContains(response,'id="load-error"')
+        self.assertContains(response,"Test API rejection")
+        self.assertNotContains(response,'id="videos"')
+
+    def test_forms_include_loading_and_validation_feedback(self):
+        response=self.client.get(self.path)
+        self.assertContains(response,'data-progress="Loading public videos')
+        self.assertContains(response,'aria-live="polite"')
+        self.assertContains(response,"Please complete the required fields")
+
+    @patch("audit.youtube_views.load_channel")
+    def test_empty_api_page_is_explicit(self,load):
+        load.return_value=dict(PAYLOAD,videos=[],next_page="")
+        response=self.client.post(self.path,{"action":"browse","channel_url":URL,"api_key":"synthetic-key"},follow=True)
+        self.assertContains(response,"0 public videos loaded")
+        self.assertContains(response,"YouTube returned no available public videos")
+
+    def test_dedicated_results_page_restores_list_and_hides_setup(self):
+        preview=self.preview()
+        response=self.client.get(self.path+"results/")
+        self.assertContains(response,"1 public video loaded")
+        self.assertNotContains(response,'id="api_key"')
+        self.assertContains(response,'View imported descriptions')
+        self.assertContains(response,"?preview="+str(preview.pk))
+
+    def test_project_has_results_return_links(self):
+        self.preview()
+        response=self.client.get(f"/projects/{self.project.pk}/")
+        self.assertContains(response,self.path+"results/")
+        self.assertContains(response,self.path+"imported/")
+        self.assertContains(response,"View loaded videos")
+        self.assertContains(response,"View imported descriptions (0)")
+
+    @patch("audit.youtube_views.extract",return_value=["https://example.com"])
+    def test_import_opens_saved_descriptions_page(self,extract):
+        preview=self.preview()
+        response=self.client.post(self.path,{"action":"import","preview":preview.pk,"videos":[VIDEO],"authorized":"on"})
+        self.assertRedirects(response,self.path+"imported/")
+        self.assertContains(self.client.get(self.path+"imported/"),"Gear")
+        self.assertContains(self.client.get(self.path+"imported/"),"Start initial link scan")
+
+    def test_dedicated_pages_block_other_customer(self):
+        self.preview()
+        self.client.force_login(self.other)
+        for ending in ["results/","imported/"]:
+            self.assertEqual(self.client.get(self.path+ending).status_code,404)
+
+    def test_empty_results_page_has_recovery_link(self):
+        response=self.client.get(self.path+"results/")
+        self.assertContains(response,"No saved video list is available yet")
+        self.assertContains(response,self.path+"?new=1")
+
+    def test_reload_link_opens_key_form_instead_of_restored_preview(self):
+        self.preview()
+        response=self.client.get(self.path+"?new=1")
+        self.assertContains(response,'id="api_key"')
+        self.assertNotContains(response,'id="videos"')
+
+    @patch("audit.youtube_views.load_channel",return_value=PAYLOAD)
+    def test_new_loaded_lists_last_29_days_not_30_minutes(self,load):
+        before=timezone.now()
+        self.client.post(self.path,{"action":"browse","channel_url":URL,"api_key":"test-key"})
+        preview=YouTubePreview.objects.get()
+        self.assertGreaterEqual(preview.expires_at,before+timedelta(days=29))
+        self.assertLess(preview.expires_at,timezone.now()+timedelta(days=29,minutes=1))
+
+    @patch("audit.youtube_views.extract",return_value=[])
+    def test_late_import_does_not_extend_api_metadata_lifetime(self,extract):
+        preview=self.preview()
+        preview.expires_at=timezone.now()+timedelta(days=1)
+        preview.save()
+        self.client.post(self.path,{"action":"import","preview":preview.pk,"videos":[VIDEO],"authorized":"on"})
+        self.assertEqual(Source.objects.get().api_expires_at,preview.expires_at)
+
+    def test_login_returns_to_bookmarked_results(self):
+        self.client.logout()
+        destination=self.path+"results/"
+        response=self.client.get("/login/?next="+destination)
+        self.assertContains(response,'name="next"')
+        response=self.client.post("/login/",{"username":"owner","password":"a-long-test-password","next":destination})
+        self.assertRedirects(response,destination)
+
+    def test_login_rejects_external_return_url(self):
+        self.client.logout()
+        response=self.client.post("/login/",{"username":"owner","password":"a-long-test-password","next":"https://evil.example/results"})
+        self.assertEqual(response["Location"],"/")
