@@ -1,0 +1,40 @@
+name: madmallard-creator-link-audit
+services:
+  web:
+    build: .
+    image: madmallard-creator-link-audit:local
+    env_file: .env
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-8042}:8000"
+    volumes:
+      - audit-data:/data
+    restart: unless-stopped
+    init: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/')"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+    mem_limit: 512m
+  worker:
+    image: madmallard-creator-link-audit:local
+    env_file: .env
+    command: [python, manage.py, worker]
+    volumes:
+      - audit-data:/data
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+    init: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp]
+    mem_limit: 512m
+volumes:
+  audit-data:

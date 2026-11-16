@@ -1,0 +1,13 @@
+{
+  "family": "madmallard-creator-link-audit",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512", "memory": "2048",
+  "executionRoleArn": "REPLACE_EXECUTION_ROLE_ARN",
+  "taskRoleArn": "REPLACE_TASK_ROLE_ARN",
+  "volumes": [{"name":"data","efsVolumeConfiguration":{"fileSystemId":"REPLACE_EFS_ID","transitEncryption":"ENABLED","authorizationConfig":{"accessPointId":"REPLACE_ACCESS_POINT_UID_10001","iam":"ENABLED"}}}],
+  "containerDefinitions": [
+    {"name":"web","image":"REPLACE_ACCOUNT.dkr.ecr.REPLACE_REGION.amazonaws.com/madmallard-creator-link-audit:REPLACE_SHA","essential":true,"user":"10001","portMappings":[{"containerPort":8000,"protocol":"tcp"}],"environment":[{"name":"DB_PATH","value":"/data/audit.sqlite3"},{"name":"COOKIE_SECURE","value":"true"},{"name":"ALLOWED_HOSTS","value":"REPLACE_HOSTNAME"}],"secrets":[{"name":"SECRET_KEY","valueFrom":"REPLACE_SECRET_ARN"},{"name":"ADMIN_PASSWORD","valueFrom":"REPLACE_ADMIN_SECRET_ARN"}],"mountPoints":[{"sourceVolume":"data","containerPath":"/data","readOnly":false}],"healthCheck":{"command":["CMD-SHELL","python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/')\""],"interval":30,"timeout":5,"retries":3,"startPeriod":60},"logConfiguration":{"logDriver":"awslogs","options":{"awslogs-group":"/madmallard/creator-link-audit","awslogs-region":"REPLACE_REGION","awslogs-stream-prefix":"web"}}},
+    {"name":"worker","image":"REPLACE_ACCOUNT.dkr.ecr.REPLACE_REGION.amazonaws.com/madmallard-creator-link-audit:REPLACE_SHA","essential":true,"user":"10001","command":["python","manage.py","worker"],"dependsOn":[{"containerName":"web","condition":"HEALTHY"}],"environment":[{"name":"DB_PATH","value":"/data/audit.sqlite3"}],"secrets":[{"name":"SECRET_KEY","valueFrom":"REPLACE_SECRET_ARN"}],"mountPoints":[{"sourceVolume":"data","containerPath":"/data","readOnly":false}],"logConfiguration":{"logDriver":"awslogs","options":{"awslogs-group":"/madmallard/creator-link-audit","awslogs-region":"REPLACE_REGION","awslogs-stream-prefix":"worker"}}}
+  ]
+}
