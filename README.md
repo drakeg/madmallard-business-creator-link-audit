@@ -25,6 +25,12 @@ It and `.env` are ignored by Git and excluded from the Docker build context. Cha
 ADMIN_PASSWORD after bootstrap does not reset an existing user: use Profile → Change
 password, or a deliberate `manage.py changepassword USER` operation.
 
+## YouTube channel URLs
+
+Use **Import from YouTube channel** inside a project to load public descriptions through
+the official API. Public metadata needs an independent YouTube Data API v3 key; no Google
+account sign-in or OAuth is used. See [setup, retention and limits](docs/YOUTUBE_IMPORT.md).
+
 ## Use the workbench
 1. Sign in as the administrator. Create a customer organization and a customer account.
    Each customer belongs to its assigned organization; staff administrators see all.
@@ -102,7 +108,7 @@ skeletons only: nothing deployed, no AWS account connection assumed.
 Local pilot only: no password recovery/invitations, MFA, account suspension UI, organization
 membership editor, billing, retention scheduler, malware scanning or production backup service.
 Login throttling is persistent per IP+username; it is a baseline, not distributed abuse protection.
-No automatic YouTube integration, scraping, link/affiliate ID replacement or publication.
+YouTube import is public metadata only; no scraping, link/affiliate ID replacement or publication.
 Markdown/HTML extraction targets outbound HTTP(S) links, not every custom syntax; relative HTML
 anchors need an original source URL. Large JavaScript-heavy pages are not rendered. A successful
 public fetch is not a statement about reuse rights: only submit authorized sources.
