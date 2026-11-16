@@ -11,9 +11,14 @@
 - Confirmed individual/bulk history deletion, persistent data, committed migrations.
 - Isolated local Compose, configurable ports/limits; undeployed cloud skeletons and notices.
 
+## Local follow-up completed
+- Manual consistent SQLite backup and isolated restore-verification commands. Thirty tests passed;
+  real snapshot integrity, table counts, restored sign-in and report access verified on the Mac.
+  Live data was not overwritten. Backups stay local; no schedules created.
+
 ## Next: before accepting production customer data
 P1: End-to-end real-browser accessibility/mobile audit and cross-browser printable report QA.
-P1: Automated backup/restore exercise with documented RPO/RTO; data retention/export policy.
+P1: Off-device backup, actual replacement-stack recovery exercise and documented RPO/RTO; data retention/export policy.
 P1: Invitations/reset, MFA, account disable/membership edit and admin action audit trail.
 P1: Stronger global/per-IP throttles, whole-job deadline, DNS timeout and egress firewall tests.
 P1: PostgreSQL migration, durable job leasing and graceful restart recovery before scaling.

@@ -110,4 +110,4 @@ public fetch is not a statement about reuse rights: only submit authorized sourc
 Worker restarts mark running scans interrupted and retain partial evidence. You can delete an
 interrupted history and rerun; this is not a distributed exactly-once queue. SQLite is appropriate
 for this single-host pilot, not multi-replica cloud scaling. Back up with SQLite’s backup API (or
-stop only this stack and copy the volume); verify restore before using real customer evidence.
+stop only this stack and copy the volume); use the operator commands in [local backup instructions](docs/LOCAL_BACKUPS.md).

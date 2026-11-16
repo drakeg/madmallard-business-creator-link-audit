@@ -39,3 +39,17 @@ cross-browser quality is not asserted as tested. No AWS/Kubernetes deployment or
 production load/recovery, full image SBOM, Rust/OS vulnerability inventory, backup/restore,
 real commercial destination validation, discount verification or affiliate attribution tests
 have been performed. Unit network cases are controlled simulations, not unsafe network probes.
+
+## Local backup follow-up — November 16, 2026
+- All 30 tests passed in the updated image, including the previous customer isolation and
+  network-safety tests plus snapshot consistency, preserved source data/password hashes,
+  mode-600 output, existing/live destination refusal, missing source, incomplete schema and
+  corrupt backup handling. Migration drift check passed.
+- Real operator backup_database and verify_backup commands passed against the local database.
+  SQLite integrity/foreign keys and required-table row counts passed after temporary restore.
+- A separate Django process used the restored temporary database to authenticate the existing
+  administrator and open a saved report. The live database was never replaced.
+- A mode-600 host copy was saved under ignored backups/. No backup data or credentials are
+  committed; no schedules, off-device storage or cloud resources were created.
+- Full replacement-volume recovery, disk-loss recovery and RPO/RTO remain untested. Prior
+  browser/mobile visual QA limitations still apply.
