@@ -47,6 +47,22 @@ def explain(result,include_source=False):
         assessment="A timeout, access restriction, rate limit or other response prevented a conclusive check."
         action="Review the specific failure below. For access restrictions, check normally in your browser; for temporary errors, retry later. Do not replace a link solely because this check was blocked."
         tone=result.category
+    # A redirect landing on a site root is not evidence of the expected product.
+    # This is a review hint only: do not mutate the HTTP evidence or claim a broken link.
+    if successful and redirects and not getattr(result, 'manual_status', '') == 'wrong_destination':
+        try:
+            landing=urlsplit(result.final_url or '')
+            original=urlsplit(result.link.url)
+            generic_root=(landing.scheme in ('http','https') and bool(landing.hostname)
+                          and landing.path in ('','/') and not landing.query and not landing.fragment
+                          and (landing.hostname.lower().rstrip('.') != (original.hostname or '').lower().rstrip('.')))
+        except ValueError:
+            generic_root=False
+        if generic_root:
+            headline="Generic homepage reached — check intended product"
+            assessment="The link redirected to a site's homepage, not a specific product path. This may be intentional, but needs confirmation."
+            action="Open the final homepage and check against the product or page described in the source. Verify any affiliate attribution separately. Do not replace the link without owner approval."
+            tone="http_review"
     if getattr(result,'manual_status','') == 'wrong_destination':
         headline="Wrong destination reported — correction review needed"
         assessment="The HTTP request received a response, but a manual check reported the wrong page or product."
