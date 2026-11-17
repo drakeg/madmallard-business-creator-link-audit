@@ -45,6 +45,40 @@ class ExplanationTests(SimpleTestCase):
         result.manual_status="wrong_destination"
         self.assertIn("Wrong destination reported",explain(result)["headline"])
 
+    def test_amazon_product_id_change_is_flagged(self):
+        result=self.result(final="https://www.amazon.com/dp/B000000002")
+        result.link.url="https://www.amazon.com/dp/B000000001?tag=creator-20"
+        data=explain(result)
+        self.assertIn("Product identifier changed",data["headline"])
+        self.assertIn("B000000001",data["assessment"])
+        self.assertIn("B000000002",data["assessment"])
+        self.assertEqual(data["tone"],"http_review")
+        self.assertEqual(data["final_status"],"HTTP 200")
+
+    def test_same_product_id_preserves_normal_success(self):
+        result=self.result(final="https://www.amazon.com/gp/product/B000000001")
+        result.link.url="https://www.amazon.com/dp/B000000001?tag=creator-20"
+        self.assertNotIn("Product identifier changed",explain(result)["headline"])
+
+    def test_shortlink_without_explicit_id_is_not_assumed_wrong(self):
+        self.assertNotIn("Product identifier changed",explain(self.result())["headline"])
+
+    def test_product_identifier_change_requires_successful_http(self):
+        result=self.result(status=404,category="broken",final="https://www.amazon.com/dp/B000000002")
+        result.link.url="https://www.amazon.com/dp/B000000001"
+        self.assertIn("Missing page",explain(result)["headline"])
+
+    def test_manual_wrong_destination_overrides_identifier_hint(self):
+        result=self.result(final="https://www.amazon.com/dp/B000000002")
+        result.link.url="https://www.amazon.com/dp/B000000001"
+        result.manual_status="wrong_destination"
+        self.assertIn("Wrong destination reported",explain(result)["headline"])
+
+    def test_unrecognized_host_cannot_supply_amazon_id(self):
+        result=self.result(final="https://notamazon.com/dp/B000000002")
+        result.link.url="https://www.amazon.com/dp/B000000001"
+        self.assertNotIn("Product identifier changed",explain(result)["headline"])
+
     def test_redirect_to_404_is_missing_page(self):
         data=explain(self.result(404,"broken"))
         self.assertIn("Missing page",data["headline"])
