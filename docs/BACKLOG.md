@@ -48,3 +48,8 @@ P2: Validate $149 demand through owner-approved pilot activity; outreach is not 
 - Result clarity: plain-language outcomes/actions, numbered redirect explanations, original
   versus final-URL affiliate evidence, and explicit manual wrong-destination reports.
   A manual mismatch remains visible even when the automated HTTP status was successful.
+
+## Automated destination triage (proposed)
+- Added a conservative report-level warning when a successful HTTP redirect from a different host terminates at a bare site homepage. This is a *review hint*, not proof of a wrong product or an invalid affiliate link. Original scan evidence, customer isolation and stored link URLs remain unchanged.
+- Next: evaluate product-specific URL identity (for example, stable product IDs when provided by the source), optional safe metadata extraction through the existing restricted network transport, and confidence-ranked review queues. Do not silently mark product identity, stock, discounts or affiliate attribution as verified.
+- Test coverage added for generic-homepage redirects, normal product links, same-host roots and manual override. Tests and browser QA must be executed before merge; no local deployment performed for this branch.
