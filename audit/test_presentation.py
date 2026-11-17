@@ -28,6 +28,23 @@ class ExplanationTests(SimpleTestCase):
     def test_affiliate_encodings_duplicates_and_case_are_preserved(self):
         self.assertEqual(affiliate_query("https://example.com?tag=Ab%2BC&tag=Second+Tag&linkCode=SL2&other=x"),"tag=Ab%2BC&tag=Second+Tag&linkCode=SL2")
 
+    def test_redirect_to_generic_homepage_prompts_targeted_review(self):
+        data=explain(self.result(final="https://www.amazon.com/"))
+        self.assertIn("Generic homepage",data["headline"])
+        self.assertEqual(data["tone"],"http_review")
+        self.assertIn("not a specific product",data["assessment"])
+        self.assertEqual(data["final_status"],"HTTP 200")
+
+    def test_redirect_to_product_and_same_host_root_are_not_flagged(self):
+        self.assertNotIn("Generic homepage",explain(self.result())["headline"])
+        same=self.result(final="https://amzn.to/")
+        self.assertNotIn("Generic homepage",explain(same)["headline"])
+
+    def test_homepage_warning_is_overridden_by_manual_mismatch(self):
+        result=self.result(final="https://www.amazon.com/")
+        result.manual_status="wrong_destination"
+        self.assertIn("Wrong destination reported",explain(result)["headline"])
+
     def test_redirect_to_404_is_missing_page(self):
         data=explain(self.result(404,"broken"))
         self.assertIn("Missing page",data["headline"])
