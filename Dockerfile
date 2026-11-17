@@ -1,4 +1,4 @@
-FROM python:3.13-slim AS runtime
+FROM python:3.15-slim AS runtime
 ARG LYCHEE_VERSION=0.24.2
 ARG TARGETARCH
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
