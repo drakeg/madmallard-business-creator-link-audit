@@ -22,6 +22,21 @@ def affiliate_query(url):
     return "&".join(part for part in query.split("&") if
         re.match(r"^(tag|ref_?|aff.*|affiliate.*|associate.*|partner.*|tracking.*|utm_.*|subid.*|clickid.*|irclickid|ascsubtag|linkcode|linkid)$",part.split("=",1)[0],re.I))
 
+def amazon_product_id(url):
+    """Return an explicit ASIN from a recognized Amazon product path only."""
+    try:
+        parsed = urlsplit(url)
+        hostname = (parsed.hostname or "").lower().rstrip(".")
+        if parsed.scheme not in ("http", "https") or hostname not in (
+            "amazon.com", "www.amazon.com", "smile.amazon.com"
+        ):
+            return ""
+        match = re.search(r"/(?:dp|gp/product)/([A-Z0-9]{10})(?:/|$)", parsed.path, re.I)
+        return match.group(1).upper() if match else ""
+    except ValueError:
+        return ""
+
+
 def explain(result,include_source=False):
     chain=result.chain or []
     redirects=[hop for hop in chain if hop.get("status") in (301,302,303,307,308) and hop.get("location")]
@@ -63,6 +78,16 @@ def explain(result,include_source=False):
             assessment="The link redirected to a site's homepage, not a specific product path. This may be intentional, but needs confirmation."
             action="Open the final homepage and check against the product or page described in the source. Verify any affiliate attribution separately. Do not replace the link without owner approval."
             tone="http_review"
+    # Explicit ASIN changes suggest a product switch, but are not proof of an error.
+    # This presentation-only check never modifies the observed HTTP result or original link.
+    if successful and redirects:
+        expected_id = amazon_product_id(getattr(result.link, "url", ""))
+        actual_id = amazon_product_id(result.final_url or "")
+        if expected_id and actual_id and expected_id != actual_id:
+            headline = "Product identifier changed — check destination"
+            assessment = f"The original Amazon URL specifies {expected_id}, but the final URL specifies {actual_id}. The redirect may lead to a different listing."
+            action = "Check both Amazon product identifiers against the described item. Confirm the destination and affiliate attribution manually before proposing any change."
+            tone = "http_review"
     if getattr(result,'manual_status','') == 'wrong_destination':
         headline="Wrong destination reported — correction review needed"
         assessment="The HTTP request received a response, but a manual check reported the wrong page or product."
