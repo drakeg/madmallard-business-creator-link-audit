@@ -44,3 +44,7 @@ P2: Validate $149 demand through owner-approved pilot activity; outreach is not 
 - Import resilience: bounded supplemental extraction, explicit fallback warnings, rollback
   regression tests, safe error references and production-mode error logging. Exact root
   cause of the historical unreproduced 500 remains unknown; future references are logged.
+
+- Result clarity: plain-language outcomes/actions, numbered redirect explanations, original
+  versus final-URL affiliate evidence, and explicit manual wrong-destination reports.
+  A manual mismatch remains visible even when the automated HTTP status was successful.

@@ -18,6 +18,7 @@ from .models import Customer,Project,Source,Link,Scan,Result,LoginAttempt,YouTub
 from .forms import SourceForm,AccountForm,ProfileForm,ReviewForm
 from .ingest import extract,uploaded,parameters
 from .network import fetch
+from .presentation import explain,category_label
 
 def projects(user):
     return Project.objects.all() if user.is_staff else Project.objects.filter(customer__members=user).distinct()
@@ -124,16 +125,21 @@ def report(request,pk):
     if category: results=results.filter(category=category)
     if review: results=results.filter(manual_status=review)
     if query: results=results.filter(Q(tested_url__icontains=query)|Q(link__source__title__icontains=query)|Q(reason__icontains=query))
-    return render(request,'audit/report.html',{'scan':scan,'results':results,'categories':scan.results.values_list('category',flat=True).distinct(),'summary':scan.results.values('category').annotate(count=Count('id')),'reviewed':scan.results.exclude(manual_status='unreviewed').count(),'category':category,'review':review,'query':query,'sources':scan.project.sources.all()})
+    results=list(results)
+    for item in results: item.explanation=explain(item)
+    outcome_summary=list(scan.results.values('category').annotate(count=Count('id')))
+    for outcome in outcome_summary: outcome['label']=category_label(outcome['category'])
+    category_choices=[{'value':c,'label':category_label(c)} for c in scan.results.values_list('category',flat=True).distinct()]
+    return render(request,'audit/report.html',{'scan':scan,'results':results,'categories':category_choices,'summary':outcome_summary,'destination_mismatches':scan.results.filter(manual_status='wrong_destination').count(),'reviewed':scan.results.exclude(manual_status='unreviewed').count(),'category':category,'review':review,'query':query,'sources':scan.project.sources.all()})
 @login_required
 def review(request,pk):
     result=get_object_or_404(Result.objects.filter(scan__project__in=projects(request.user)).select_related('link__source','scan'),pk=pk)
     form=ReviewForm(request.POST or None,initial={'manual_status':result.manual_status,'notes':result.notes,'replacement':result.replacement})
     if request.method=='POST' and form.is_valid():
         d=form.cleaned_data
-        if d['manual_status'] in ('destination_verified','discount_verified') and not d['notes'].strip():
+        if d['manual_status'] in ('destination_verified','discount_verified','wrong_destination') and not d['notes'].strip():
             form.add_error('notes','Record the evidence and method used for manual verification.')
-            return render(request,'audit/review.html',{'result':result,'form':form})
+            return render(request,'audit/review.html',{'result':result,'form':form,'explanation':explain(result,include_source=True)})
         with transaction.atomic():
             Project.objects.filter(pk=result.scan.project_id).update(name=result.scan.project.name)
             # Review budget is distinct links per engagement, not individual edits.
@@ -145,11 +151,14 @@ def review(request,pk):
                     obj.reviewed_by=request.user.username; obj.reviewed_at=timezone.now(); obj.save()
                 messages.success(request,'Review saved. No source or external website was changed.')
                 return redirect('report',pk=result.scan_id)
-    return render(request,'audit/review.html',{'result':result,'form':form})
+    return render(request,'audit/review.html',{'result':result,'form':form,'explanation':explain(result,include_source=True)})
 @login_required
 def export(request,pk):
     scan=scan_for(request,pk); results=scan.results.select_related('link__source').defer('link__source__content').order_by('link__source_id','link_id')
-    if request.GET.get('format')=='html': return render(request,'audit/print.html',{'scan':scan,'results':results})
+    if request.GET.get('format')=='html':
+        results=list(results)
+        for item in results: item.explanation=explain(item)
+        return render(request,'audit/print.html',{'scan':scan,'results':results})
     class Echo:
         def write(self,value): return value
     def safe(value):
@@ -157,11 +166,12 @@ def export(request,pk):
         return "'"+text if text.lstrip().startswith(('=','+','-','@','\t','\r')) else text
     def rows():
         writer=csv.writer(Echo())
-        yield writer.writerow(['project','customer','source','source_original_url','source_content','discount_codes_unverified','original_link','tested_url','suspected_affiliate_parameters_exact','category','http_status','redirect_chain','final_destination','checked_at_utc','reason','manual_status','notes','proposed_replacement','reviewed_by','reviewed_at','baseline_scan','previous_category','previous_status'])
+        yield writer.writerow(['project','customer','source','source_original_url','source_content','discount_codes_unverified','original_link','tested_url','suspected_affiliate_parameters_exact','category','http_status','redirect_chain','final_destination','checked_at_utc','reason','manual_status','notes','proposed_replacement','reviewed_by','reviewed_at','baseline_scan','previous_category','previous_status','plain_assessment','recommended_action','redirect_count','final_destination_affiliate_parameters'])
         sources={s.pk:s for s in scan.project.sources.all()}
         for r in results.iterator(chunk_size=10):
             s=sources[r.link.source_id]
-            yield writer.writerow([safe(v) for v in [scan.project.name,scan.project.customer.name,s.title,s.original_url,s.content,s.codes,r.link.url,r.tested_url,r.link.affiliate_parameters,r.category,r.status,json.dumps(r.chain),r.final_url,r.checked_at.isoformat(),r.reason,r.manual_status,r.notes,r.replacement,r.reviewed_by,r.reviewed_at,scan.baseline_id,r.previous_category,r.previous_status]])
+            explanation=explain(r)
+            yield writer.writerow([safe(v) for v in [scan.project.name,scan.project.customer.name,s.title,s.original_url,s.content,s.codes,r.link.url,r.tested_url,r.link.affiliate_parameters,r.category,r.status,json.dumps(r.chain),r.final_url,r.checked_at.isoformat(),r.reason,r.manual_status,r.notes,r.replacement,r.reviewed_by,r.reviewed_at,scan.baseline_id,r.previous_category,r.previous_status,explanation["assessment"],explanation["action"],explanation["redirect_count"],explanation["final_parameters"]]])
     response=StreamingHttpResponse(rows(),content_type='text/csv; charset=utf-8')
     response['Content-Disposition']=f'attachment; filename="audit-{scan.pk}.csv"'
     return response
