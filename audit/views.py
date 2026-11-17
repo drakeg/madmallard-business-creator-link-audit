@@ -104,9 +104,9 @@ def start_scan(request,pk):
             messages.error(request,'A scan is already in progress.'); return redirect('project',pk=pk)
         if not Link.objects.filter(source__project=p).exists():
             messages.error(request,'Add at least one outbound link.'); return redirect('project',pk=pk)
-        completed=p.scans.filter(state='complete').order_by('created')
+        completed=p.scans.filter(state='complete').exclude(purpose='inspection').order_by('created')
         baseline=completed.first()
-        if p.scans.filter(baseline__isnull=False).exists():
+        if p.scans.filter(baseline__isnull=False).exclude(purpose='inspection').exists():
             messages.error(request,'Pilot includes one initial scan and one retest. Create a new project for another engagement.'); return redirect('project',pk=pk)
         approved=request.POST.get('approved')=='on'
         if baseline and not approved:
@@ -116,7 +116,7 @@ def start_scan(request,pk):
         use_replacements=bool(baseline and request.POST.get('use_replacements')=='on')
         targets={str(l.pk):l.replacement if use_replacements and l.replacement else l.url for l in Link.objects.filter(source__project=p)}
         scan=Scan.objects.create(project=p,baseline=baseline,corrections_approved=approved,use_replacements=use_replacements,targets=targets)
-    return redirect('report',pk=scan.pk)
+    return redirect('quick_report',pk=scan.pk)
 @login_required
 def report(request,pk):
     scan=scan_for(request,pk)
@@ -143,7 +143,7 @@ def review(request,pk):
         with transaction.atomic():
             Project.objects.filter(pk=result.scan.project_id).update(name=result.scan.project.name)
             # Review budget is distinct links per engagement, not individual edits.
-            reviewed=Link.objects.filter(source__project=result.scan.project).exclude(manual_status='unreviewed').exclude(pk=result.link_id).count()
+            reviewed=Link.objects.filter(source__project=result.scan.project).exclude(manual_status='unreviewed').exclude(url=result.link.url).values('url').distinct().count()
             if d['manual_status']!='unreviewed' and reviewed>=10: form.add_error(None,'Pilot manual verification limit is 10 links.')
             else:
                 for obj in (result,result.link):

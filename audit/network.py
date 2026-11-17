@@ -5,6 +5,7 @@ import ipaddress, socket, time
 from urllib.parse import urlsplit,urljoin
 import urllib3
 from django.conf import settings
+from .content_checks import inspect_content
 class UnsafeURL(ValueError): pass
 
 def resolve_public(url):
@@ -48,7 +49,16 @@ def fetch(url, read_body=False, *, allowed_content_types=("text/", "html"), requ
                 url=urljoin(url,location)
                 continue
             body=b''
-            if read_body:
+            if read_body == 'inspect':
+                content_type=response.headers.get('Content-Type','').lower()
+                encoding=response.headers.get('Content-Encoding','').lower()
+                if ('text/html' in content_type or 'application/xhtml+xml' in content_type) and encoding in ('','identity'):
+                    body=response.read(262144,decode_content=False)
+                    chain[-1]['content_sample_bytes']=len(body)
+                    chain[-1]['content_sample_limited']=len(body)>=262144
+                else:
+                    chain[-1]['content_inspection_note']='Non-HTML or compressed content was not inspected'
+            elif read_body:
                 body=response.read(1_000_001,decode_content=False)
                 if len(body)>1_000_000: raise ValueError('Public page exceeds 1 MB limit')
                 if not any(t in response.headers.get('Content-Type','').lower() for t in allowed_content_types):
@@ -67,7 +77,7 @@ def fetch(url, read_body=False, *, allowed_content_types=("text/", "html"), requ
 def check(url):
     for attempt in range(settings.SCAN_RETRIES+1):
         try:
-            status,final,chain,_=fetch(url)
+            status,final,chain,body=fetch(url,'inspect')
             if status in (404,410): category,reason='broken','HTTP confirms missing/gone resource'
             elif status in (401,403): category,reason='access_blocked','Authentication, bot protection or access denial; not confirmed broken'
             elif status==429: category,reason='rate_limited','Rate limited; manual review or later retest required'
@@ -75,7 +85,7 @@ def check(url):
             elif status>=500: category,reason='server_error','Server error; may be temporary'
             else: category,reason='http_review','Unexpected HTTP response; manual review required'
             if status>=500 and attempt<settings.SCAN_RETRIES: continue
-            return dict(category=category,status=status,final_url=final,chain=chain,reason=reason)
+            return dict(category=category,status=status,final_url=final,chain=chain,reason=reason,content_evidence=inspect_content(url,final,body) if 200<=status<300 else {})
         except UnsafeURL as exc:
             return dict(category='unsafe_blocked',status=None,final_url='',chain=getattr(exc,'audit_chain',[]),reason=str(exc))
         except Exception as exc:
