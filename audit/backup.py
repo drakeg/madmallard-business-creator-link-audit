@@ -11,6 +11,7 @@ REQUIRED_TABLES = (
     "django_migrations", "auth_user", "audit_customer",
     "audit_customer_members", "audit_project", "audit_source",
     "audit_link", "audit_scan", "audit_result",
+    "audit_discountcode", "audit_discountcode_sources",
 )
 
 def read_only(path):
