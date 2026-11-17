@@ -74,3 +74,46 @@ class UniqueLinkReviewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["unique_count"], 1)
         self.assertEqual(response.context["occurrences"], 2)
+
+    def test_shared_review_requires_preview_and_confirmation(self):
+        self.client.force_login(self.owner)
+        first = Result.objects.get(scan=self.scan, link=self.links[0])
+        url = f"/reports/{self.scan.pk}/unique/{first.pk}/"
+        preview = self.client.post(url, {
+            "manual_status": "needs_owner",
+            "notes": "Creator needs to confirm the named item.",
+            "replacement": "",
+        })
+        self.assertEqual(preview.status_code, 200)
+        token = preview.context["token"]
+        denied = self.client.post(url, {"action": "apply", "token": token})
+        self.assertEqual(denied.status_code, 400)
+        self.assertEqual(Link.objects.filter(manual_status="unreviewed").count(), 2)
+        applied = self.client.post(url, {
+            "action": "apply", "token": token, "confirm": "on",
+        })
+        self.assertEqual(applied.status_code, 302)
+        self.assertEqual(Link.objects.filter(manual_status="needs_owner").count(), 2)
+        self.assertEqual(Result.objects.filter(scan=self.scan, manual_status="needs_owner").count(), 2)
+
+    def test_shared_review_does_not_cross_to_different_affiliate_url(self):
+        self.links[1].url = "https://example.com/item?tag=other"
+        self.links[1].save(update_fields=["url"])
+        second = Result.objects.get(scan=self.scan, link=self.links[1])
+        second.tested_url = self.links[1].url
+        second.save(update_fields=["tested_url"])
+        first = Result.objects.get(scan=self.scan, link=self.links[0])
+        self.client.force_login(self.owner)
+        url = f"/reports/{self.scan.pk}/unique/{first.pk}/"
+        preview = self.client.post(url, {
+            "manual_status": "needs_owner", "notes": "Check destination.", "replacement": "",
+        })
+        self.assertEqual(preview.status_code, 200)
+        applied = self.client.post(url, {
+            "action": "apply", "token": preview.context["token"], "confirm": "on",
+        })
+        self.assertEqual(applied.status_code, 302)
+        self.links[0].refresh_from_db()
+        self.links[1].refresh_from_db()
+        self.assertEqual(self.links[0].manual_status, "needs_owner")
+        self.assertEqual(self.links[1].manual_status, "unreviewed")
