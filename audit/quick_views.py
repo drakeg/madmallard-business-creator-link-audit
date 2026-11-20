@@ -28,7 +28,19 @@ def quick_report(request,pk):
     counts=Counter(g["bucket"] for g in groups)
     selected=request.GET.get("show","all")
     visible=[g for g in groups if selected=="all" or g["bucket"]==selected]
-    return render(request,"audit/quick_report.html",{"scan":scan,"groups":visible,"counts":dict(counts),"unique_count":len(groups),"occurrences":sum(g["count"] for g in groups),"selected":selected,"inspected":sum(bool(g["evidence"]) for g in groups)})
+    occurrences=sum(group["count"] for group in groups)
+    with_manual_decision=sum(
+        any(row.manual_status!="unreviewed" for row in group["rows"])
+        for group in groups
+    )
+    return render(request,"audit/quick_report.html",{
+        "scan":scan,"groups":visible,"counts":dict(counts),
+        "unique_count":len(groups),"occurrences":occurrences,
+        "duplicate_appearances":occurrences-len(groups),
+        "groups_with_decisions":with_manual_decision,
+        "groups_without_decisions":len(groups)-with_manual_decision,
+        "selected":selected,"inspected":sum(bool(g["evidence"]) for g in groups),
+    })
 
 def safe_csv_cell(value):
     """Prevent spreadsheet formula execution while preserving original URLs."""
