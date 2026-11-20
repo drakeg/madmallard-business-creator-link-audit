@@ -18,7 +18,8 @@
 **Acceptance:** Creator can view one ranked unique-link review queue; original affiliate URLs are never silently rewritten; full test suite, migration checks and LAN smoke pass.
 
 ## Sprint 2 — Reliability, security and standards (current parallel sprint)
-- [ ] Resolve default-branch CI failure and dependency manifest/lock/runtime divergence
+- [x] Resolve default-branch CI failure (green main checks after PR #14/#16)
+- [ ] Align Django 5.2 LTS manifest and locked version (validation pending)
 - [ ] Adopt central standards with verified badges, root Agile documents, Security and release policy
 - [ ] Validate account invitation/MFA/administration behavior and migrations before customer data
 - [ ] Confirm persistent backup and replacement-stack restore exercise
