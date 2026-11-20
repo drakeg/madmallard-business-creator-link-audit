@@ -16,3 +16,5 @@ A PR merge alone does not require a release. A meaningful, tested milestone with
 - Under development: central standards adoption and dependency/CI alignment.
 
 No release has been created by this documentation change.
+
+- Unreleased security hardening: incomplete invitation/reset/MFA flows now return an explicit unavailable response instead of promising protection or generating unusable credentials; account status enforcement tightened.

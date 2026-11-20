@@ -1,0 +1,8 @@
+{% extends 'audit/base.html' %}
+{% block content %}
+<h1>Account status</h1>
+<p>Managing {{ managed_user.username }}. Disabling this account also disables password sign-in.</p>
+<form method="post">{% csrf_token %}{{ form.as_p }}
+<button type="submit">Save account status</button>
+<a href="{% url 'accounts' %}">Cancel</a></form>
+{% endblock %}

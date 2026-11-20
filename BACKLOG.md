@@ -17,3 +17,8 @@
 | P2 | Select application-level open-source license | 4 | Owner authorization needed; no license assumed |
 
 See [docs/BACKLOG.md](docs/BACKLOG.md) for historical delivered work and unresolved technical tasks. Work through P0 issues first; after each PR merge, continue with the next ready task.
+
+## Sprint 2 security discovery
+- Self-service invitation, password reset and MFA interfaces existed without working delivery or second-factor verification; explicitly unavailable until secure implementations and end-to-end tests exist.
+- Account status changes must synchronize the Django active-user flag; manual membership changes must never manufacture usernames or email addresses.
+- Follow-up: implement secure single-use invitation flow, verified recovery delivery, enforced TOTP at login, repeated membership history, audit-event correctness and complete browser/admin templates before paid customer use.
