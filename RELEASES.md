@@ -20,3 +20,5 @@ No release has been created by this documentation change.
 - Unreleased security hardening: incomplete invitation/reset/MFA flows now return an explicit unavailable response instead of promising protection or generating unusable credentials; account status enforcement tightened.
 
 - Unreleased dependency repair: lock Gunicorn 27.0.1 to match the accepted 27.x requirement; verify WSGI startup and HTTP behavior before local promotion.
+
+- Unreleased (pending review): optional filtered CSV action queue, deduplicated by exact original + tested URL while preserving affiliate parameters and source coverage. No product guarantees.

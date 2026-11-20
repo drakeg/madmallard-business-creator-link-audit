@@ -2,7 +2,7 @@
 <p class="eyebrow"><a href="{% url 'project' scan.project_id %}">{{ scan.project.name }}</a> / Quick review #{{ scan.pk }}</p>
 <h1>{{ unique_count }} unique links. {{ occurrences }} uses covered.</h1>
 <p class="muted">One entry per exact original + tested URL. Affiliate IDs stay distinct. Problems appear first.</p>
-<div class="actions" style="margin-bottom:20px"><a class="button secondary" href="{% url 'project' scan.project_id %}">Back to project</a><a href="{% url 'report' scan.pk %}">Full per-source evidence</a><a href="{% url 'export' scan.pk %}">CSV report</a><a href="{% url 'export' scan.pk %}?format=html">Printable report</a></div>
+<div class="actions" style="margin-bottom:20px"><a class="button secondary" href="{% url 'project' scan.project_id %}">Back to project</a><a href="{% url 'report' scan.pk %}">Full per-source evidence</a><a class="button" href="{% url 'export_unique_actions' scan.pk %}?show={{ selected|urlencode }}">Download action list (CSV)</a><a href="{% url 'export' scan.pk %}">CSV report</a><a href="{% url 'export' scan.pk %}?format=html">Printable report</a></div>
 <section class="card"><span class="pill">{{ scan.state }}</span> {{ scan.progress }} / {{ scan.total }} unique targets checked.
 {% if scan.state == 'queued' or scan.state == 'running' %}<progress value="{{ scan.progress }}" max="{{ scan.total|default:1 }}" aria-label="Check progress"></progress>{% endif %}
 {% if scan.error %}<p role="alert">{{ scan.error }}</p>{% endif %}

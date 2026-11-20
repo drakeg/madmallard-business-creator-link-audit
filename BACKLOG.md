@@ -10,7 +10,7 @@
 | P1 | Tested off-device backup and replacement-stack restoration | 2 | Open; recover and reopen scan report |
 | P1 | Browser/mobile/keyboard/print accessibility | 2 | Open; no visual QA claim until executed |
 | P1 | Unique-link review analytics with measured actions/time | 3 | Planned; consent-based metrics |
-| P1 | Creator-facing concise actionable report | 3 | Planned; no fabricated product claims |
+| P1 | Creator-facing concise actionable report | 3 | Actionable unique-link CSV export in PR (pending CI); retain full evidence report |
 | P1 | First authorized creator/agency demo and $149 pilot hypothesis test | 3 | No customer validation yet |
 | P2 | Versioned source edits and reversible suggested corrections | 4 | Planned |
 | P2 | Durable worker recovery and PostgreSQL scale decision | 4 | Demand-dependent |
@@ -24,3 +24,8 @@ See [docs/BACKLOG.md](docs/BACKLOG.md) for historical delivered work and unresol
 - Follow-up: implement secure single-use invitation flow, verified recovery delivery, enforced TOTP at login, repeated membership history, audit-event correctness and complete browser/admin templates before paid customer use.
 
 - P0 CI repair: Renovate PR #13 changed the Gunicorn manifest to 27.x without updating the lockfile. Lock alignment to 27.0.1 is under test; add paired manifest/lock updates to future dependency PRs.
+
+## Sprint 3 — action queue export (in review)
+- One-click, tenant-scoped CSV with **one row per exact original + tested URL**, affected source titles, evidence summary, suggested creator action, manual status/notes, original affiliate parameters, and review URL.
+- Filter the export by the same attention/review bucket shown on the page; preserve original affiliate URLs and apply CSV injection escaping to fields. No external publication or state changes.
+- Success criterion: a creator can hand off a compact actionable list without manually copying duplicates; record measured usage only after a real pilot.

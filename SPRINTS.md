@@ -28,7 +28,7 @@
 
 ## Sprint 3 — Time-saving pilot (next)
 - [ ] Group common exact links across imported sources and offer evidence-driven action queue
-- [ ] Add one-click scoped exports that highlight recommended creator action and evidence
+- [ ] Add one-click scoped exports that highlight recommended creator action and evidence (implementation submitted; CI/merge pending)
 - [ ] Measure unique URLs, repeated occurrences, review-time savings and export usefulness without inventing values
 - [ ] Trial with consenting creator or agency; collect willingness-to-pay feedback
 **Acceptance:** Pilot can ingest authorized source descriptions, identify likely issues, and produce a readable action report with low repeated manual work.

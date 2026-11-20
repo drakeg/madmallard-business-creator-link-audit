@@ -1,10 +1,11 @@
 from collections import Counter
+import csv
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core import signing
 from django.db import transaction
-from django.http import Http404,HttpResponseBadRequest
+from django.http import Http404,HttpResponseBadRequest,HttpResponse
 from django.shortcuts import render,redirect
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -28,6 +29,53 @@ def quick_report(request,pk):
     selected=request.GET.get("show","all")
     visible=[g for g in groups if selected=="all" or g["bucket"]==selected]
     return render(request,"audit/quick_report.html",{"scan":scan,"groups":visible,"counts":dict(counts),"unique_count":len(groups),"occurrences":sum(g["count"] for g in groups),"selected":selected,"inspected":sum(bool(g["evidence"]) for g in groups)})
+
+def safe_csv_cell(value):
+    """Prevent spreadsheet formula execution while preserving original URLs."""
+    value = "" if value is None else str(value)
+    if value.lstrip().startswith(("=", "+", "-", "@", "\t", "\r", "\n")):
+        return "'" + value
+    return value
+
+
+@login_required
+def export_unique_actions(request,pk):
+    """One actionable row per exact URL+test target, with source coverage."""
+    scan=scan_for(request,pk)
+    selected=request.GET.get("show","all")
+    buckets={"all","attention","inconclusive","review","likely_valid","reachable","reviewed"}
+    if selected not in buckets:
+        return HttpResponseBadRequest("Unknown review filter")
+    response=HttpResponse(content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"]=f'attachment; filename="creator-actions-{scan.pk}.csv"'
+    writer=csv.writer(response)
+    writer.writerow([
+        "priority","review_bucket","recommended_creator_action","evidence_summary",
+        "original_url_exact","tested_url_exact","final_url","http_status",
+        "occurrences","affected_sources","description_item_labels",
+        "page_title","automatic_evidence","manual_status","manual_notes",
+        "proposed_replacement_not_published","review_url",
+    ])
+    for group in grouped_results(scan):
+        if selected!="all" and group["bucket"]!=selected:
+            continue
+        r=group["representative"]
+        sources=sorted({row.link.source.title for row in group["rows"]})
+        decisions=sorted({row.manual_status for row in group["rows"]})
+        notes=sorted({row.notes.strip() for row in group["rows"] if row.notes.strip()})
+        replacements=sorted({row.replacement for row in group["rows"] if row.replacement})
+        evidence=group["evidence"] or {}
+        review_path=f"/reports/{scan.pk}/unique/{r.pk}/"
+        writer.writerow([safe_csv_cell(x) for x in [
+            group["priority"]+1, group["bucket"],group["headline"],group["detail"],
+            r.link.url,r.tested_url,r.final_url,r.status,
+            group["count"]," | ".join(sources)," | ".join(group["labels"]),
+            evidence.get("title","")," | ".join(evidence.get("reasons",[])),
+            " | ".join(decisions)," | ".join(notes)," | ".join(replacements),
+            request.build_absolute_uri(review_path),
+        ]])
+    return response
+
 
 @login_required
 @require_POST
