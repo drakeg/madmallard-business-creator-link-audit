@@ -4,6 +4,7 @@ from urllib.parse import urlsplit
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate,login
+from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required,user_passes_test
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth import update_session_auth_hash
@@ -223,187 +224,64 @@ def health(request): return HttpResponse('ok',content_type='text/plain')
 
 @login_required
 @user_passes_test(lambda u:u.is_staff)
-def send_invitation(request,customer_id,email):
-    """Send account invitation to new user."""
-    customer=get_object_or_404(Customer,pk=customer_id)
-    if request.method=='POST':
-        form=InvitationForm(request.POST)
-        if form.is_valid():
-            email=form.cleaned_data['email']
-            # Check if invitation already exists
-            existing=AccountInvitation.objects.filter(customer=customer,email=email,status='pending')
-            if existing.exists():
-                messages.error(request,f"An invitation has already been sent to {email}.")
-                return redirect('accounts')
+def send_invitation(request,customer_id):
+    """Invite delivery is not configured; do not create undeliverable tokens."""
+    get_object_or_404(Customer,pk=customer_id)
+    return HttpResponse(
+        "Invitation email delivery is not configured. Create an account from "
+        "Customers & accounts and share credentials through a trusted channel.",
+        status=503, content_type="text/plain",
+    )
 
-            # Create invitation with 7-day expiry by default
-            expires_in_days=form.cleaned_data.get('expires_in_days',7)
-            expires_at=timezone.now()+timedelta(days=expires_in_days)
-            invitation=AccountInvitation.objects.create(
-                customer=customer,
-                email=email,
-                invited_by=request.user.username,
-                expires_at=expires_at
-            )
-
-            # Log admin action
-            AdminActionLog.objects.create(
-                performed_by=request.user,
-                action_type='invitation_sent',
-                target_customer=customer,
-                details=f"Invitation sent to {email} for customer {customer.name}"
-            )
-
-            messages.success(request,f"Invitation sent to {email}. They will receive an email with a secure link.")
-            return redirect('accounts')
-        else:
-            messages.error(request,"Form errors. Please check the fields below.")
-    else:
-        form=InvitationForm()
-
-    invitations=AccountInvitation.objects.filter(customer=customer,status='pending').order_by('-invited_at')[:10]
-    return render(request,'audit/invitation_list.html',{'form':form,'customer':customer,'invitations':invitations})
 
 @login_required
 @user_passes_test(lambda u:u.is_staff)
 def resend_invitation(request,customer_id,token):
-    """Resend invitation to existing pending invitation."""
-    invitation=get_object_or_404(AccountInvitation,token=token,status='pending')
-    if request.method=='POST':
-        messages.success(request,f"Invitation resent to {invitation.email}")
-        # Log admin action
-        AdminActionLog.objects.create(
-            performed_by=request.user,
-            action_type='invitation_sent',
-            target_customer=invitation.customer,
-            details=f"Resent invitation to {invitation.email}"
-        )
-    return redirect('send_invitation',customer_id=invitation.customer.pk,email=invitation.email)
+    return HttpResponse("Invitation delivery unavailable.",status=503,content_type="text/plain")
+
 
 @login_required
 @user_passes_test(lambda u:u.is_staff)
 def revoke_invitation(request,customer_id,token):
-    """Revoke an invitation."""
-    invitation=get_object_or_404(AccountInvitation,token=token,status='pending')
-    if request.method=='POST':
-        invitation.status='revoked'
-        invitation.save()
-        messages.success(request,f"Invitation to {invitation.email} has been revoked.")
-        # Log admin action
-        AdminActionLog.objects.create(
-            performed_by=request.user,
-            action_type='user_created',  # Using existing type for now
-            target_customer=invitation.customer,
-            details=f"Revoked invitation to {invitation.email}"
-        )
-    return redirect('send_invitation',customer_id=invitation.customer.pk,email=invitation.email)
+    """Allow revocation of prior stored tokens, scoped to the selected customer."""
+    invitation=get_object_or_404(AccountInvitation,customer_id=customer_id,token=token,status="pending")
+    if request.method=="POST":
+        invitation.status="revoked"
+        invitation.save(update_fields=["status"])
+        messages.success(request,"Invitation revoked.")
+        return redirect("accounts")
+    return HttpResponse("Use POST to revoke this invitation.",status=405,content_type="text/plain")
 
-@login_required
+
 def request_password_reset(request):
-    """Request password reset via email."""
-    if request.method=='POST':
-        form=PasswordResetForm(request.POST)
-        if form.is_valid():
-            email=form.cleaned_data['email']
-            # Create reset token with 1-hour expiry
-            expires_at=timezone.now()+timedelta(hours=1)
-            token=AccountResetToken.objects.create(
-                email=email,
-                expires_at=expires_at
-            )
+    """No mail provider or verified reset-token delivery exists in this local pilot."""
+    return HttpResponse(
+        "Self-service password reset is not available. Ask an administrator to reset "
+        "your password securely; signed-in users can change it in Profile.",
+        status=503, content_type="text/plain",
+    )
 
-            # In production, send email here with reset link
-            # For now, log the action
-            AdminActionLog.objects.create(
-                performed_by=request.user,
-                action_type='password_reset_requested',
-                details=f"Password reset requested for {email}"
-            )
 
-            messages.success(request, f"A password reset token has been created for {email}. In production, an email would be sent with the reset link.")
-            return redirect('login')
-        else:
-            messages.error(request,"Form errors. Please check the fields below.")
-    else:
-        form=PasswordResetForm()
-
-    return render(request,'audit/password_reset_request.html',{'form':form})
-
-@login_required
 def accept_invitation(request,token):
-    """Accept invitation and create account."""
-    try:
-        invitation=get_object_or_404(AccountInvitation,token=token,status='pending')
-    except AccountInvitation.DoesNotExist:
-        messages.error(request,"Invalid or expired invitation link.")
-        return redirect('login')
+    """No verified invite-token delivery or secure acceptance workflow exists."""
+    return HttpResponse(
+        "Self-service invitations are not available in this pilot. "
+        "Ask an administrator to create your account securely.",
+        status=503, content_type="text/plain",
+    )
 
-    if request.method=='POST':
-        password=request.POST.get('password','')
-        if len(password)<12:
-            messages.error(request, "Password must be at least 12 characters long.")
-            return redirect('accept_invitation',token=invitation.token)
-
-        try:
-            user=invitation.accept_invitation(password)
-            # Log admin action
-            AdminActionLog.objects.create(
-                performed_by=invitation.invited_by,
-                action_type='user_created',
-                target_customer=invitation.customer,
-                details=f"Account created via invitation for {email}"
-            )
-
-            messages.success(request, f"Welcome! Your account has been created. You can now sign in.")
-            return redirect('login')
-        except ValueError as e:
-            messages.error(request, str(e))
-            return redirect('accept_invitation',token=invitation.token)
-
-    return render(request,'audit/accept_invitation.html',{'invitation':invitation})
-
-# ==================== MFA SETUP ====================
 
 @login_required
 def setup_mfa(request):
-    """Setup multi-factor authentication."""
-    if request.user.mfa.exists() and request.user.mfa.enabled:
-        messages.info(request, "MFA is already enabled for your account.")
-        return redirect('profile')
+    """Do not claim MFA until a second factor is enforced during login."""
+    return HttpResponse("MFA is not implemented or enforced in this pilot.", status=503, content_type="text/plain")
 
-    if request.method=='POST':
-        form=MFASetupForm(request.POST)
-        if form.is_valid():
-            totp_secret=form.cleaned_data['totp_secret']
-
-            # Create or get MFA record
-            mfa,created=UserMFA.objects.get_or_create(user=request.user)
-
-            # In production, validate TOTP secret here
-            mfa.secret_key=totp_secret
-            mfa.enabled=True
-            mfa.save()
-
-            messages.success(request, "MFA has been enabled. Backup codes have been generated and should be saved securely.")
-            return redirect('profile')
-        else:
-            messages.error(request,"Form errors. Please check the fields below.")
-    else:
-        form=MFASetupForm()
-
-    return render(request,'audit/mfa_setup.html',{'form':form})
 
 @login_required
 def disable_mfa(request):
-    """Disable multi-factor authentication."""
-    if request.method=='POST':
-        mfa=request.user.mfa
-        mfa.enabled=False
-        mfa.save()
-        messages.success(request,"MFA has been disabled. You can re-enable it at any time.")
-        return redirect('profile')
+    """Do not manipulate previously saved MFA metadata without a verified workflow."""
+    return HttpResponse("MFA administration is unavailable in this pilot.", status=503, content_type="text/plain")
 
-    return render(request,'audit/mfa_disable.html')
 
 # ==================== ACCOUNT STATUS MANAGEMENT ====================
 
@@ -418,15 +296,19 @@ def manage_account_status(request,user_id):
         if form.is_valid():
             status=form.cleaned_data['status']
 
-            # Log admin action
-            AdminActionLog.objects.create(
-                performed_by=request.user,
-                action_type='user_disabled' if status=='disabled' else 'role_changed',
-                target_user=user,
-                details=f"Account status changed to {status}"
-            )
-
-            form.save()
+            if user.pk == request.user.pk and status != "active":
+                form.add_error("status", "Administrators cannot disable their own active session.")
+                return render(request,"audit/account_status.html",{"form":form,"managed_user":user})
+            with transaction.atomic():
+                form.save()
+                user.is_active = status == "active"
+                user.save(update_fields=["is_active"])
+                AdminActionLog.objects.create(
+                    performed_by=request.user,
+                    action_type="user_disabled" if status != "active" else "role_changed",
+                    target_user=user,
+                    details=f"Account status changed to {status}",
+                )
             messages.success(request, f"Account status for {user.username} updated to {status}.")
             return redirect('accounts')
         else:
@@ -434,7 +316,7 @@ def manage_account_status(request,user_id):
     else:
         form=AccountStatusForm(instance=AccountStatus.objects.get_or_create(user=user)[0])
 
-    return render(request,'audit/account_status.html',{'form':form,'user':user})
+    return render(request,'audit/account_status.html',{'form':form,'managed_user':user})
 
 @login_required
 @user_passes_test(lambda u:u.is_staff)
@@ -524,7 +406,10 @@ def add_member(request,customer_id):
     if request.method=='POST':
         username=request.POST.get('username','')
         if username:
-            user,created=User.objects.get_or_create(username=username,defaults={'email':f'{username}@example.com'})
+            user=User.objects.filter(username=username).first()
+            if user is None:
+                messages.error(request,'Account not found. Create the account explicitly before adding membership.')
+                return redirect('accounts')
             customer.members.add(user)
 
             # Log admin action
