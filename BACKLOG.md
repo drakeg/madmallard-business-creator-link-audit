@@ -22,3 +22,5 @@ See [docs/BACKLOG.md](docs/BACKLOG.md) for historical delivered work and unresol
 - Self-service invitation, password reset and MFA interfaces existed without working delivery or second-factor verification; explicitly unavailable until secure implementations and end-to-end tests exist.
 - Account status changes must synchronize the Django active-user flag; manual membership changes must never manufacture usernames or email addresses.
 - Follow-up: implement secure single-use invitation flow, verified recovery delivery, enforced TOTP at login, repeated membership history, audit-event correctness and complete browser/admin templates before paid customer use.
+
+- P0 CI repair: Renovate PR #13 changed the Gunicorn manifest to 27.x without updating the lockfile. Lock alignment to 27.0.1 is under test; add paired manifest/lock updates to future dependency PRs.
