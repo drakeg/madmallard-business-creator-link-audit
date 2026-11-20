@@ -10,7 +10,6 @@ from .models import Customer, DiscountCode, Link, Project, Result, Scan, Source
 
 class CodeTokenTests(TestCase):
     def test_exact_tokens_are_kept_and_prose_is_not_invented(self):
-    values = code_tokens("MALLARD10\nmallard10\nRV-20%\nRV10 - 10% off\nSPRING_25  \n")
         values = code_tokens("MALLARD10\nmallard10\nRV-20%\nRV10 - 10% off\n  SPRING_25  \n")
         self.assertEqual(values, ["MALLARD10", "RV10", "SPRING_25"])
 
