@@ -74,6 +74,20 @@ class UniqueLinkReviewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["unique_count"], 1)
         self.assertEqual(response.context["occurrences"], 2)
+        self.assertEqual(response.context["duplicate_appearances"], 1)
+        self.assertEqual(response.context["groups_with_decisions"], 0)
+        self.assertEqual(response.context["groups_without_decisions"], 1)
+
+    def test_review_progress_does_not_claim_unreviewed_links_are_done(self):
+        first=Result.objects.get(scan=self.scan,link=self.links[0])
+        first.manual_status="needs_owner"
+        first.save(update_fields=["manual_status"])
+        self.client.force_login(self.owner)
+        response=self.client.get(f"/reports/{self.scan.pk}/summary/")
+        self.assertEqual(response.context["groups_with_decisions"],1)
+        self.assertEqual(response.context["groups_without_decisions"],0)
+        self.assertEqual(response.context["duplicate_appearances"],1)
+        self.assertContains(response,"not measured time savings")
 
     def test_shared_review_requires_preview_and_confirmation(self):
         self.client.force_login(self.owner)
