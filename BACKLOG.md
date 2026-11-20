@@ -3,14 +3,14 @@
 | Priority | Item | Sprint | State / acceptance |
 | --- | --- | --- | --- |
 | P0 | Maintain green main CI and consistent Django 5.2 LTS manifest/lock | 2 | Completed in PRs #14, #16 and #17; ongoing validation in CI |
-| P0 | Integrate PR #15 accessibility and explicit discount-code reviews | 2 | In review; confirm merged CI, tenant isolation and browser workflows |
+| P0 | Integrate PR #15 accessibility and explicit discount-code reviews | 2 | Merged with green CI; visual/mobile browser QA remains P1 |
 | P0 | Merge PR #14 scoped auto-triage and shared unique-link reviews | 1 | Completed and verified in main |
 | P0 | Adopt docs/badges/central validation and LAN Compose defaults | 2 | Completed in PR #16; ongoing maintenance required |
 | P1 | Verify invitation/MFA/reset/admin features and safe migration path | 2 | Unverified; no production-user claims |
 | P1 | Tested off-device backup and replacement-stack restoration | 2 | Open; recover and reopen scan report |
 | P1 | Browser/mobile/keyboard/print accessibility | 2 | Open; no visual QA claim until executed |
-| P1 | Unique-link review workload indicators | 3 | In review: duplicate occurrences collapsed and groups with recorded decisions; actual time-saving measurement remains consent-based |
-| P1 | Creator-facing concise actionable report | 3 | Actionable unique-link CSV export in PR (pending CI); retain full evidence report |
+| P1 | Unique-link review workload indicators | 3 | Implemented in PR #22; actual time-savings measurement requires pilot evidence |
+| P1 | Creator-facing concise actionable report | 3 | One-click grouped CSV action list in PR #21, merged; full evidence report retained |
 | P1 | First authorized creator/agency demo and $149 pilot hypothesis test | 3 | No customer validation yet |
 | P2 | Versioned source edits and reversible suggested corrections | 4 | Planned |
 | P2 | Durable worker recovery and PostgreSQL scale decision | 4 | Demand-dependent |
@@ -23,12 +23,17 @@ See [docs/BACKLOG.md](docs/BACKLOG.md) for historical delivered work and unresol
 - Account status changes must synchronize the Django active-user flag; manual membership changes must never manufacture usernames or email addresses.
 - Follow-up: implement secure single-use invitation flow, verified recovery delivery, enforced TOTP at login, repeated membership history, audit-event correctness and complete browser/admin templates before paid customer use.
 
-- P0 CI repair: Renovate PR #13 changed the Gunicorn manifest to 27.x without updating the lockfile. Lock alignment to 27.0.1 is under test; add paired manifest/lock updates to future dependency PRs.
+- Completed P0: PR #20 aligned Gunicorn 27.0.1 lock with its manifest and passed Docker/CI tests; future dependency PRs must update both files.
 
-## Sprint 3 — action queue export (in review)
+## Sprint 3 — action queue export (implemented)
 - One-click, tenant-scoped CSV with **one row per exact original + tested URL**, affected source titles, evidence summary, suggested creator action, manual status/notes, original affiliate parameters, and review URL.
 - Filter the export by the same attention/review bucket shown on the page; preserve original affiliate URLs and apply CSV injection escaping to fields. No external publication or state changes.
 - Success criterion: a creator can hand off a compact actionable list without manually copying duplicates; record measured usage only after a real pilot.
 
 - Sprint 3 follow-up: show transparent counts of duplicate appearances consolidated and unique-link groups with any recorded manual decision. Do not claim measured time saved, final review completion, or customer results without evidence.
 - Dependency housekeeping: Renovate can suggest patch/minor releases within the verified Django 5.2 LTS line; major Django 6 must have an independent planned migration and pinned lock update. Keep locked dependency and declared constraints consistent in PRs.
+
+## Next authorized priorities
+- Complete the LAN web/browser keyboard, mobile, focus, print and export workflow acceptance tests on realistic non-sensitive fixtures.
+- Add off-device encrypted backup/retention instructions and a documented restore exercise, with no automatic deletion of existing data.
+- Trial the no-publication action export with a consenting creator and measure actual reviews avoided, time and willingness to pay. No prior demand validation is assumed; product coding continues regardless.
