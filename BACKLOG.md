@@ -31,3 +31,4 @@ See [docs/BACKLOG.md](docs/BACKLOG.md) for historical delivered work and unresol
 - Success criterion: a creator can hand off a compact actionable list without manually copying duplicates; record measured usage only after a real pilot.
 
 - Sprint 3 follow-up: show transparent counts of duplicate appearances consolidated and unique-link groups with any recorded manual decision. Do not claim measured time saved, final review completion, or customer results without evidence.
+- Dependency housekeeping: Renovate can suggest patch/minor releases within the verified Django 5.2 LTS line; major Django 6 must have an independent planned migration and pinned lock update. Keep locked dependency and declared constraints consistent in PRs.

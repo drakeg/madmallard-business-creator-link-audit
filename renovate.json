@@ -2,5 +2,17 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "packageRules": [
+    {
+      "description": "Stay on Django 5.2 LTS until a separately tested and planned major-version migration",
+      "matchDatasources": [
+        "pypi"
+      ],
+      "matchPackageNames": [
+        "django"
+      ],
+      "allowedVersions": ">=5.2,<6.0"
+    }
   ]
 }
