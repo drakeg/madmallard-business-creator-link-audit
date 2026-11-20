@@ -1,5 +1,11 @@
 # Mad Mallard Solutions — Creator Link Audit
 
+<!-- madmallard-badges:start -->
+![Django](https://img.shields.io/badge/Django-092E20?logo=django&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white) ![Docker Compose](https://img.shields.io/badge/Docker%20Compose-2496ED?logo=docker&logoColor=white) ![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
+
+[![test](https://github.com/drakeg/madmallard-business-creator-link-audit/actions/workflows/test.yml/badge.svg)](https://github.com/drakeg/madmallard-business-creator-link-audit/actions/workflows/test.yml) [![Issues](https://img.shields.io/github/issues/drakeg/madmallard-business-creator-link-audit)](https://github.com/drakeg/madmallard-business-creator-link-audit/issues) [![Pull requests](https://img.shields.io/github/issues-pr/drakeg/madmallard-business-creator-link-audit)](https://github.com/drakeg/madmallard-business-creator-link-audit/pulls)
+<!-- madmallard-badges:end -->
+
 A local, private MVP for reviewing RV/travel creators’ product, sponsor and affiliate
 links in older descriptions and blog posts. The $149 pilot is a price hypothesis;
 no paid demand has been validated. No outreach, paid APIs, schedules or cloud deployment.
@@ -13,9 +19,7 @@ docker compose up -d --build
 docker compose ps
 ```
 
-Open http://localhost:8042. Default bind is **Mac-only** (`127.0.0.1`). Ports are configurable.
-For LAN access deliberately set BIND_ADDRESS=0.0.0.0 and add the Mac’s LAN IP/hostname to
-ALLOWED_HOSTS, then recreate this stack. Do not expose plain HTTP to the internet. Use TLS
+Open `http://LAN-IP:8042` on a trusted LAN. Local testing defaults to `BIND_ADDRESS=0.0.0.0`; add the Mac’s LAN IP/hostname to `ALLOWED_HOSTS`. Ports are configurable. Keep host firewall and LAN isolation enabled. Do not expose plain HTTP to the internet. Use TLS
 and secure cookies for any hosted deployment. No existing applications or volumes need
 be stopped. The dedicated named volume persists through container rebuilds. Do not use
 `docker compose down -v` unless you intend to destroy all app data.
@@ -56,6 +60,9 @@ account sign-in or OAuth is used. See [setup, retention and limits](docs/YOUTUBE
    link notes. Deleting a baseline removes its retest reference; deleting history resets
    the project’s scan-count allowance. This is a workbench limit, not billing enforcement.
 
+## Discount-code review (in PR #15)
+Owner-supplied discount codes are recorded separately from HTTP link health. Exact tokens and explicit `CODE - 10% off` owner notes may be registered as **unverified**; third-party video descriptions are not automatically treated as validated offers. A reviewer can record merchant, method and evidence for a verified/expired code. The app does not submit checkout forms, prove attribution or publish replacements.
+
 ## Interpretation
 - **broken:** only HTTP 404/410, evidence at check time. Human confirmation is still useful.
 - **access_blocked:** HTTP 401/403. Could be authentication or bot protection; not broken.
@@ -73,7 +80,7 @@ HTML entities in hrefs are decoded to the actual navigable URL; raw source is re
 Discount codes are owner-supplied and default to unverified. No codes are invented.
 
 ## Architecture & safety
-Python 3.13 + current Django 5.2 LTS patch + urllib3 + Gunicorn; pinned in requirements.lock.
+Python 3.15 runtime declared in Dockerfile; Django 5.2.19 currently pinned in requirements.lock, although requirements.txt declares Django 6.1. This mismatch is a tracked P0 dependency-alignment issue. Also uses urllib3 and Gunicorn.
 Independent Django auth (PBKDF2 passwords, CSRF, server sessions), no private auth copied from
 other projects. Membership checks apply to project reads/writes, reports, reviews and exports.
 SQLite schema migrations and a dedicated persistent volume; one worker. Scan queue is capped
@@ -105,8 +112,7 @@ See [test evidence](docs/TESTING.md) for executed results and their limits, and
 skeletons only: nothing deployed, no AWS account connection assumed.
 
 ## Operational limitations
-Local pilot only: no password recovery/invitations, MFA, account suspension UI, organization
-membership editor, billing, retention scheduler, malware scanning or production backup service.
+Local pilot only: account invitation/reset, MFA, suspension, and membership administration have recently been added on a review branch but require complete security and browser validation before customer use. No billing, retention scheduler, malware scanning, or production backup service.
 Login throttling is persistent per IP+username; it is a baseline, not distributed abuse protection.
 YouTube import is public metadata only; no scraping, link/affiliate ID replacement or publication.
 Markdown/HTML extraction targets outbound HTTP(S) links, not every custom syntax; relative HTML
@@ -117,3 +123,9 @@ Worker restarts mark running scans interrupted and retain partial evidence. You 
 interrupted history and rerun; this is not a distributed exactly-once queue. SQLite is appropriate
 for this single-host pilot, not multi-replica cloud scaling. Back up with SQLite’s backup API (or
 stop only this stack and copy the volume); use the operator commands in [local backup instructions](docs/LOCAL_BACKUPS.md).
+
+## Development and commercialization
+
+See [Sprint plan](SPRINTS.md), [prioritized backlog](BACKLOG.md), [contribution guide](CONTRIBUTING.md), [release policy](RELEASES.md), and [security policy](SECURITY.md). The $149 per-engagement pilot is a **hypothesis**, not validated demand. Target customers are small travel/RV content creators and agencies with numerous monetized links. Success is measured in unique links triaged, manual decisions avoided, actionable corrections, and prospective willingness to pay.
+
+No repository-level open-source license has yet been chosen; vendored dependency notices are not a license for this application.

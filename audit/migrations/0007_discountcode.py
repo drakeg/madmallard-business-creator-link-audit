@@ -35,7 +35,7 @@ def backfill_owner_source_codes(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('audit', '0004_keep_loaded_video_results'),
+        ('audit', '0006_p1_features'),
     ]
 
     operations = [

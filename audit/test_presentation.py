@@ -28,6 +28,57 @@ class ExplanationTests(SimpleTestCase):
     def test_affiliate_encodings_duplicates_and_case_are_preserved(self):
         self.assertEqual(affiliate_query("https://example.com?tag=Ab%2BC&tag=Second+Tag&linkCode=SL2&other=x"),"tag=Ab%2BC&tag=Second+Tag&linkCode=SL2")
 
+    def test_redirect_to_generic_homepage_prompts_targeted_review(self):
+        data=explain(self.result(final="https://www.amazon.com/"))
+        self.assertIn("Generic homepage",data["headline"])
+        self.assertEqual(data["tone"],"http_review")
+        self.assertIn("not a specific product",data["assessment"])
+        self.assertEqual(data["final_status"],"HTTP 200")
+
+    def test_redirect_to_product_and_same_host_root_are_not_flagged(self):
+        self.assertNotIn("Generic homepage",explain(self.result())["headline"])
+        same=self.result(final="https://amzn.to/")
+        self.assertNotIn("Generic homepage",explain(same)["headline"])
+
+    def test_homepage_warning_is_overridden_by_manual_mismatch(self):
+        result=self.result(final="https://www.amazon.com/")
+        result.manual_status="wrong_destination"
+        self.assertIn("Wrong destination reported",explain(result)["headline"])
+
+    def test_amazon_product_id_change_is_flagged(self):
+        result=self.result(final="https://www.amazon.com/dp/B000000002")
+        result.link.url="https://www.amazon.com/dp/B000000001?tag=creator-20"
+        data=explain(result)
+        self.assertIn("Product identifier changed",data["headline"])
+        self.assertIn("B000000001",data["assessment"])
+        self.assertIn("B000000002",data["assessment"])
+        self.assertEqual(data["tone"],"http_review")
+        self.assertEqual(data["final_status"],"HTTP 200")
+
+    def test_same_product_id_preserves_normal_success(self):
+        result=self.result(final="https://www.amazon.com/gp/product/B000000001")
+        result.link.url="https://www.amazon.com/dp/B000000001?tag=creator-20"
+        self.assertNotIn("Product identifier changed",explain(result)["headline"])
+
+    def test_shortlink_without_explicit_id_is_not_assumed_wrong(self):
+        self.assertNotIn("Product identifier changed",explain(self.result())["headline"])
+
+    def test_product_identifier_change_requires_successful_http(self):
+        result=self.result(status=404,category="broken",final="https://www.amazon.com/dp/B000000002")
+        result.link.url="https://www.amazon.com/dp/B000000001"
+        self.assertIn("Missing page",explain(result)["headline"])
+
+    def test_manual_wrong_destination_overrides_identifier_hint(self):
+        result=self.result(final="https://www.amazon.com/dp/B000000002")
+        result.link.url="https://www.amazon.com/dp/B000000001"
+        result.manual_status="wrong_destination"
+        self.assertIn("Wrong destination reported",explain(result)["headline"])
+
+    def test_unrecognized_host_cannot_supply_amazon_id(self):
+        result=self.result(final="https://notamazon.com/dp/B000000002")
+        result.link.url="https://www.amazon.com/dp/B000000001"
+        self.assertNotIn("Product identifier changed",explain(result)["headline"])
+
     def test_redirect_to_404_is_missing_page(self):
         data=explain(self.result(404,"broken"))
         self.assertIn("Missing page",data["headline"])

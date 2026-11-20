@@ -48,3 +48,19 @@ P2: Validate $149 demand through owner-approved pilot activity; outreach is not 
 - Result clarity: plain-language outcomes/actions, numbered redirect explanations, original
   versus final-URL affiliate evidence, and explicit manual wrong-destination reports.
   A manual mismatch remains visible even when the automated HTTP status was successful.
+
+## Automated destination triage (proposed)
+- Added a conservative report-level warning when a successful HTTP redirect from a different host terminates at a bare site homepage. This is a *review hint*, not proof of a wrong product or an invalid affiliate link. Original scan evidence, customer isolation and stored link URLs remain unchanged.
+- Next: evaluate product-specific URL identity (for example, stable product IDs when provided by the source), optional safe metadata extraction through the existing restricted network transport, and confidence-ranked review queues. Do not silently mark product identity, stock, discounts or affiliate attribution as verified.
+- Test coverage added for generic-homepage redirects, normal product links, same-host roots and manual override. Tests and browser QA must be executed before merge; no local deployment performed for this branch.
+
+- Added a conservative mismatch warning when both original and final Amazon.com URLs contain explicit /dp/ or /gp/product/ identifiers and those IDs differ. This is a review hint, not automatic evidence of an invalid product, and does not change scan history or URLs. Shortlinks with no explicit product ID cannot be assessed this way. Regression tests added; execution and browser QA remain pending.
+
+## Automated review triage (new review branch)
+- Summarize each completed scan in a unique-link queue so repeating an identical original and tested URL in several sources needs one human decision, not many.
+- Sort suspected missing pages, content mismatches and manually reported wrong destinations before inconclusive and lower-risk outcomes.
+- Inspect a bounded sample of public HTML fetched only through the existing restricted transport. Signal likely soft-missing pages, security gates, Amazon homepages, and explicit product-ID matches/mismatches without claiming guaranteed product or affiliate validity.
+- Keep affiliate query strings intact: different parameterized URLs are never silently grouped together.
+- Require an explicit preview/confirmation before applying one review to every occurrence of an exact link; the original source text and external websites are never edited.
+- Store inspection evidence alongside each result with a migration; migrations must be backed up and applied deliberately before upgrading the local persistent data volume.
+- Security and usability follow-up: broader content fixture coverage, accessibility/visual browser QA, live page variability, rate-limiting, per-host bounded budgets, full-image dependency audit, and production backup/recovery validation.

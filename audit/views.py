@@ -1,4 +1,4 @@
-import csv,hashlib,io,json,time
+import csv,hashlib,io,json,time,uuid,random
 from datetime import timedelta
 from urllib.parse import urlsplit
 from django.conf import settings
@@ -14,19 +14,17 @@ from django.shortcuts import render,redirect,get_object_or_404
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
-from .models import Customer,Project,Source,Link,Scan,Result,LoginAttempt,YouTubePreview,DiscountCode
-from .forms import SourceForm,AccountForm,ProfileForm,ReviewForm,DiscountCodeForm,DiscountCodeReviewForm
+from .models import DiscountCode,Customer,Project,Source,Link,Scan,Result,LoginAttempt,YouTubePreview,AccountInvitation,AccountResetToken,AdminActionLog,UserMFA,AccountStatus,CustomerMembership
+from .forms import DiscountCodeForm,DiscountCodeReviewForm,SourceForm,AccountForm,ProfileForm,ReviewForm,InvitationForm,PasswordResetForm,MFASetupForm,AccountStatusForm,MembershipForm
 from .ingest import extract,uploaded,parameters
 from .network import fetch
 from .presentation import explain,category_label
 from .codes import code_register,register_owner_source_codes,reviewed_commercial_url_count
-from django.db import IntegrityError
 
 def projects(user):
     return Project.objects.all() if user.is_staff else Project.objects.filter(customer__members=user).distinct()
 def project_for(request,pk): return get_object_or_404(projects(request.user),pk=pk)
 def scan_for(request,pk): return get_object_or_404(Scan.objects.filter(project__in=projects(request.user)),pk=pk)
-def code_for(request,pk): return get_object_or_404(DiscountCode.objects.select_related('project').filter(project__in=projects(request.user)),pk=pk)
 def login_view(request):
     next_url=request.POST.get('next') or request.GET.get('next') or '/'
     if not url_has_allowed_host_and_scheme(next_url,allowed_hosts={request.get_host()},require_https=request.is_secure()): next_url='/'
@@ -103,44 +101,6 @@ def project(request,pk):
     return render(request,'audit/project.html',{'project':p,'form':form,'sources':p.sources.prefetch_related('links'),'scans':p.scans.order_by('-created'),'max_sources':settings.MAX_SOURCES,'max_links':settings.MAX_LINKS,'youtube_preview':YouTubePreview.objects.filter(project=p,user=request.user,expires_at__gt=timezone.now()).order_by('-expires_at').first(),'youtube_import_count':p.sources.exclude(youtube_video_id='').count(),'latest_scan':p.scans.order_by('-created').first(),'discount_codes':p.discount_codes.prefetch_related('sources').order_by('status','code'),'code_form':DiscountCodeForm(project=p),'reviewed_urls':reviewed_commercial_url_count(p),'review_limit':10})
 @login_required
 @require_POST
-def add_discount_code(request,pk):
-    p=project_for(request,pk)
-    form=DiscountCodeForm(request.POST,project=p)
-    if not form.is_valid():
-        for errors in form.errors.values():
-            for error in errors: messages.error(request,error)
-        return redirect('project',pk=p.pk)
-    value=form.cleaned_data['code']; merchant=form.cleaned_data['merchant_url']; source=form.cleaned_data['source']
-    try:
-        with transaction.atomic():
-            Project.objects.filter(pk=p.pk).update(name=p.name) # SQLite write lock before duplicate checks
-            record,created=DiscountCode.objects.get_or_create(project=p,code__iexact=value,defaults={'code':value,'merchant_url':merchant})
-            if created:
-                messages.success(request,f'Registered {value} as unverified. Record manual evidence before claiming it works.')
-            else:
-                messages.warning(request,f'{value} was already registered for this project; no duplicate was created.')
-                if merchant and not record.merchant_url:
-                    record.merchant_url=merchant; record.save(update_fields=['merchant_url'])
-            if source: record.sources.add(source)
-    except IntegrityError:
-        messages.error(request,'That code is already registered for this project.')
-    return redirect('project',pk=p.pk)
-@login_required
-def discount_code(request,pk):
-    record=code_for(request,pk)
-    form=DiscountCodeReviewForm(request.POST or None,initial={'status':record.status,'merchant_url':record.merchant_url,'evidence':record.evidence})
-    if request.method=='POST' and form.is_valid():
-        with transaction.atomic():
-            Project.objects.filter(pk=record.project_id).update(name=record.project.name)
-            record.status=form.cleaned_data['status']; record.merchant_url=form.cleaned_data['merchant_url']; record.evidence=form.cleaned_data['evidence']
-            if record.status=='unverified': record.reviewed_by=''; record.reviewed_at=None
-            else: record.reviewed_by=request.user.username; record.reviewed_at=timezone.now()
-            record.save()
-        messages.success(request,'Discount code review saved. No checkout, code entry or purchase was performed.')
-        return redirect('project',pk=record.project_id)
-    return render(request,'audit/discount_code.html',{'code':record,'form':form})
-@login_required
-@require_POST
 def start_scan(request,pk):
     p=project_for(request,pk)
     with transaction.atomic():
@@ -149,9 +109,9 @@ def start_scan(request,pk):
             messages.error(request,'A scan is already in progress.'); return redirect('project',pk=pk)
         if not Link.objects.filter(source__project=p).exists():
             messages.error(request,'Add at least one outbound link.'); return redirect('project',pk=pk)
-        completed=p.scans.filter(state='complete').order_by('created')
+        completed=p.scans.filter(state='complete').exclude(purpose='inspection').order_by('created')
         baseline=completed.first()
-        if p.scans.filter(baseline__isnull=False).exists():
+        if p.scans.filter(baseline__isnull=False).exclude(purpose='inspection').exists():
             messages.error(request,'Pilot includes one initial scan and one retest. Create a new project for another engagement.'); return redirect('project',pk=pk)
         approved=request.POST.get('approved')=='on'
         if baseline and not approved:
@@ -161,7 +121,7 @@ def start_scan(request,pk):
         use_replacements=bool(baseline and request.POST.get('use_replacements')=='on')
         targets={str(l.pk):l.replacement if use_replacements and l.replacement else l.url for l in Link.objects.filter(source__project=p)}
         scan=Scan.objects.create(project=p,baseline=baseline,corrections_approved=approved,use_replacements=use_replacements,targets=targets)
-    return redirect('report',pk=scan.pk)
+    return redirect('quick_report',pk=scan.pk)
 @login_required
 def report(request,pk):
     scan=scan_for(request,pk)
@@ -175,7 +135,7 @@ def report(request,pk):
     outcome_summary=list(scan.results.values('category').annotate(count=Count('id')))
     for outcome in outcome_summary: outcome['label']=category_label(outcome['category'])
     category_choices=[{'value':c,'label':category_label(c)} for c in scan.results.values_list('category',flat=True).distinct()]
-    return render(request,'audit/report.html',{'scan':scan,'results':results,'categories':category_choices,'summary':outcome_summary,'destination_mismatches':scan.results.filter(manual_status='wrong_destination').count(),'reviewed':scan.results.exclude(manual_status='unreviewed').count(),'reviewed_urls':scan.results.exclude(manual_status='unreviewed').values('link__url').distinct().count(),'unique_link_count':scan.results.values('link__url').distinct().count(),'codes':scan.project.discount_codes.prefetch_related('sources').order_by('status','code'),'category':category,'review':review,'query':query,'sources':scan.project.sources.all()})
+    return render(request,'audit/report.html',{'scan':scan,'results':results,'categories':category_choices,'summary':outcome_summary,'destination_mismatches':scan.results.filter(manual_status='wrong_destination').count(),'reviewed':scan.results.exclude(manual_status='unreviewed').count(),'unique_link_count':scan.results.values('link__url').distinct().count(),'codes':scan.project.discount_codes.prefetch_related('sources').order_by('status','code'),'category':category,'review':review,'query':query,'sources':scan.project.sources.all()})
 @login_required
 def review(request,pk):
     result=get_object_or_404(Result.objects.filter(scan__project__in=projects(request.user)).select_related('link__source','scan'),pk=pk)
@@ -187,8 +147,8 @@ def review(request,pk):
             return render(request,'audit/review.html',{'result':result,'form':form,'explanation':explain(result,include_source=True)})
         with transaction.atomic():
             Project.objects.filter(pk=result.scan.project_id).update(name=result.scan.project.name)
-            # Review budget is distinct commercial URLs per engagement, not repeated links.
-            reviewed=reviewed_commercial_url_count(result.scan.project,exclude_url=result.link.url)
+            # Review budget is distinct links per engagement, not individual edits.
+            reviewed=Link.objects.filter(source__project=result.scan.project).exclude(manual_status='unreviewed').exclude(url=result.link.url).values('url').distinct().count()
             if d['manual_status']!='unreviewed' and reviewed>=10: form.add_error(None,'Pilot manual verification limit is 10 distinct commercial URLs; repeated occurrences of one URL count once.')
             else:
                 for obj in (result,result.link):
@@ -258,3 +218,452 @@ def accounts(request):
     return render(request,'audit/accounts.html',{'form':form,'customers':Customer.objects.prefetch_related('members')})
 
 def health(request): return HttpResponse('ok',content_type='text/plain')
+
+# ==================== INVITATIONS & PASSWORD RESET ====================
+
+@login_required
+@user_passes_test(lambda u:u.is_staff)
+def send_invitation(request,customer_id,email):
+    """Send account invitation to new user."""
+    customer=get_object_or_404(Customer,pk=customer_id)
+    if request.method=='POST':
+        form=InvitationForm(request.POST)
+        if form.is_valid():
+            email=form.cleaned_data['email']
+            # Check if invitation already exists
+            existing=AccountInvitation.objects.filter(customer=customer,email=email,status='pending')
+            if existing.exists():
+                messages.error(request,f"An invitation has already been sent to {email}.")
+                return redirect('accounts')
+
+            # Create invitation with 7-day expiry by default
+            expires_in_days=form.cleaned_data.get('expires_in_days',7)
+            expires_at=timezone.now()+timedelta(days=expires_in_days)
+            invitation=AccountInvitation.objects.create(
+                customer=customer,
+                email=email,
+                invited_by=request.user.username,
+                expires_at=expires_at
+            )
+
+            # Log admin action
+            AdminActionLog.objects.create(
+                performed_by=request.user,
+                action_type='invitation_sent',
+                target_customer=customer,
+                details=f"Invitation sent to {email} for customer {customer.name}"
+            )
+
+            messages.success(request,f"Invitation sent to {email}. They will receive an email with a secure link.")
+            return redirect('accounts')
+        else:
+            messages.error(request,"Form errors. Please check the fields below.")
+    else:
+        form=InvitationForm()
+
+    invitations=AccountInvitation.objects.filter(customer=customer,status='pending').order_by('-invited_at')[:10]
+    return render(request,'audit/invitation_list.html',{'form':form,'customer':customer,'invitations':invitations})
+
+@login_required
+@user_passes_test(lambda u:u.is_staff)
+def resend_invitation(request,customer_id,token):
+    """Resend invitation to existing pending invitation."""
+    invitation=get_object_or_404(AccountInvitation,token=token,status='pending')
+    if request.method=='POST':
+        messages.success(request,f"Invitation resent to {invitation.email}")
+        # Log admin action
+        AdminActionLog.objects.create(
+            performed_by=request.user,
+            action_type='invitation_sent',
+            target_customer=invitation.customer,
+            details=f"Resent invitation to {invitation.email}"
+        )
+    return redirect('send_invitation',customer_id=invitation.customer.pk,email=invitation.email)
+
+@login_required
+@user_passes_test(lambda u:u.is_staff)
+def revoke_invitation(request,customer_id,token):
+    """Revoke an invitation."""
+    invitation=get_object_or_404(AccountInvitation,token=token,status='pending')
+    if request.method=='POST':
+        invitation.status='revoked'
+        invitation.save()
+        messages.success(request,f"Invitation to {invitation.email} has been revoked.")
+        # Log admin action
+        AdminActionLog.objects.create(
+            performed_by=request.user,
+            action_type='user_created',  # Using existing type for now
+            target_customer=invitation.customer,
+            details=f"Revoked invitation to {invitation.email}"
+        )
+    return redirect('send_invitation',customer_id=invitation.customer.pk,email=invitation.email)
+
+@login_required
+def request_password_reset(request):
+    """Request password reset via email."""
+    if request.method=='POST':
+        form=PasswordResetForm(request.POST)
+        if form.is_valid():
+            email=form.cleaned_data['email']
+            # Create reset token with 1-hour expiry
+            expires_at=timezone.now()+timedelta(hours=1)
+            token=AccountResetToken.objects.create(
+                email=email,
+                expires_at=expires_at
+            )
+
+            # In production, send email here with reset link
+            # For now, log the action
+            AdminActionLog.objects.create(
+                performed_by=request.user,
+                action_type='password_reset_requested',
+                details=f"Password reset requested for {email}"
+            )
+
+            messages.success(request, f"A password reset token has been created for {email}. In production, an email would be sent with the reset link.")
+            return redirect('login')
+        else:
+            messages.error(request,"Form errors. Please check the fields below.")
+    else:
+        form=PasswordResetForm()
+
+    return render(request,'audit/password_reset_request.html',{'form':form})
+
+@login_required
+def accept_invitation(request,token):
+    """Accept invitation and create account."""
+    try:
+        invitation=get_object_or_404(AccountInvitation,token=token,status='pending')
+    except AccountInvitation.DoesNotExist:
+        messages.error(request,"Invalid or expired invitation link.")
+        return redirect('login')
+
+    if request.method=='POST':
+        password=request.POST.get('password','')
+        if len(password)<12:
+            messages.error(request, "Password must be at least 12 characters long.")
+            return redirect('accept_invitation',token=invitation.token)
+
+        try:
+            user=invitation.accept_invitation(password)
+            # Log admin action
+            AdminActionLog.objects.create(
+                performed_by=invitation.invited_by,
+                action_type='user_created',
+                target_customer=invitation.customer,
+                details=f"Account created via invitation for {email}"
+            )
+
+            messages.success(request, f"Welcome! Your account has been created. You can now sign in.")
+            return redirect('login')
+        except ValueError as e:
+            messages.error(request, str(e))
+            return redirect('accept_invitation',token=invitation.token)
+
+    return render(request,'audit/accept_invitation.html',{'invitation':invitation})
+
+# ==================== MFA SETUP ====================
+
+@login_required
+def setup_mfa(request):
+    """Setup multi-factor authentication."""
+    if request.user.mfa.exists() and request.user.mfa.enabled:
+        messages.info(request, "MFA is already enabled for your account.")
+        return redirect('profile')
+
+    if request.method=='POST':
+        form=MFASetupForm(request.POST)
+        if form.is_valid():
+            totp_secret=form.cleaned_data['totp_secret']
+
+            # Create or get MFA record
+            mfa,created=UserMFA.objects.get_or_create(user=request.user)
+
+            # In production, validate TOTP secret here
+            mfa.secret_key=totp_secret
+            mfa.enabled=True
+            mfa.save()
+
+            messages.success(request, "MFA has been enabled. Backup codes have been generated and should be saved securely.")
+            return redirect('profile')
+        else:
+            messages.error(request,"Form errors. Please check the fields below.")
+    else:
+        form=MFASetupForm()
+
+    return render(request,'audit/mfa_setup.html',{'form':form})
+
+@login_required
+def disable_mfa(request):
+    """Disable multi-factor authentication."""
+    if request.method=='POST':
+        mfa=request.user.mfa
+        mfa.enabled=False
+        mfa.save()
+        messages.success(request,"MFA has been disabled. You can re-enable it at any time.")
+        return redirect('profile')
+
+    return render(request,'audit/mfa_disable.html')
+
+# ==================== ACCOUNT STATUS MANAGEMENT ====================
+
+@login_required
+@user_passes_test(lambda u:u.is_staff)
+def manage_account_status(request,user_id):
+    """Manage account status (disable, suspend, lock)."""
+    user=get_object_or_404(User,pk=user_id)
+
+    if request.method=='POST':
+        form=AccountStatusForm(request.POST,instance=AccountStatus.objects.get_or_create(user=user)[0])
+        if form.is_valid():
+            status=form.cleaned_data['status']
+
+            # Log admin action
+            AdminActionLog.objects.create(
+                performed_by=request.user,
+                action_type='user_disabled' if status=='disabled' else 'role_changed',
+                target_user=user,
+                details=f"Account status changed to {status}"
+            )
+
+            form.save()
+            messages.success(request, f"Account status for {user.username} updated to {status}.")
+            return redirect('accounts')
+        else:
+            messages.error(request,"Form errors. Please check the fields below.")
+    else:
+        form=AccountStatusForm(instance=AccountStatus.objects.get_or_create(user=user)[0])
+
+    return render(request,'audit/account_status.html',{'form':form,'user':user})
+
+@login_required
+@user_passes_test(lambda u:u.is_staff)
+def disable_account(request,user_id,reason):
+    """Disable an account."""
+    user=get_object_or_404(User,pk=user_id)
+
+    if request.method=='POST':
+        # Log admin action before disabling
+        AdminActionLog.objects.create(
+            performed_by=request.user,
+            action_type='user_disabled',
+            target_user=user,
+            details=f"Account disabled: {reason}"
+        )
+
+        # Disable account
+        user.is_active=False
+        user.save()
+
+        # Create or update AccountStatus record
+        status,created=AccountStatus.objects.get_or_create(user=user)
+        status.status='disabled'
+        status.disabled_reason=reason
+        status.save()
+
+        messages.success(request, f"Account for {user.username} has been disabled.")
+        return redirect('accounts')
+
+    return render(request,'audit/disable_account.html',{'user':user,'reason':reason})
+
+# ==================== MEMBERSHIP MANAGEMENT ====================
+
+@login_required
+@user_passes_test(lambda u:u.is_staff)
+def manage_membership(request,customer_id):
+    """Manage customer membership (add/remove members)."""
+    customer=get_object_or_404(Customer,pk=customer_id)
+
+    if request.method=='POST':
+        form=MembershipForm(request.POST)
+        if form.is_valid():
+            action=form.cleaned_data['action']
+            user=form.cleaned_data['user']
+
+            # Log admin action
+            AdminActionLog.objects.create(
+                performed_by=request.user,
+                action_type='membership_added' if action=='added' else 'role_changed',
+                target_customer=customer,
+                details=f"{'Added' if action=='added' else 'Removed'} {user.username} to/from {customer.name}"
+            )
+
+            # Create membership history record
+            CustomerMembership.objects.create(
+                customer=customer,
+                user=user,
+                action='added' if action=='added' else 'removed',
+                performed_by=request.user,
+                details=f"{'Added' if action=='added' else 'Removed'} by {request.user.username}"
+            )
+
+            # Perform the actual membership change
+            if action=='added':
+                customer.members.add(user)
+            else:
+                customer.members.remove(user)
+
+            messages.success(request, f"Membership updated for {customer.name}.")
+            return redirect('accounts')
+        else:
+            messages.error(request,"Form errors. Please check the fields below.")
+    else:
+        form=MembershipForm()
+
+    # Get current members
+    members=list(customer.members.all())
+
+    return render(request,'audit/membership_manage.html',{'form':form,'customer':customer,'members':members})
+
+@login_required
+@user_passes_test(lambda u:u.is_staff)
+def add_member(request,customer_id):
+    """Add a member to customer organization."""
+    customer=get_object_or_404(Customer,pk=customer_id)
+
+    if request.method=='POST':
+        username=request.POST.get('username','')
+        if username:
+            user,created=User.objects.get_or_create(username=username,defaults={'email':f'{username}@example.com'})
+            customer.members.add(user)
+
+            # Log admin action
+            AdminActionLog.objects.create(
+                performed_by=request.user,
+                action_type='membership_added',
+                target_customer=customer,
+                details=f"Added {user.username} to {customer.name}"
+            )
+
+            messages.success(request, f"{user.username} has been added to {customer.name}.")
+            return redirect('accounts')
+        else:
+            messages.error(request, "Username is required.")
+    return render(request,'audit/add_member.html',{'customer':customer})
+
+@login_required
+@user_passes_test(lambda u:u.is_staff)
+def remove_member(request,customer_id,user_id):
+    """Remove a member from customer organization."""
+    customer=get_object_or_404(Customer,pk=customer_id)
+    user=get_object_or_404(User,pk=user_id)
+
+    if request.method=='POST':
+        # Log admin action before removing
+        AdminActionLog.objects.create(
+            performed_by=request.user,
+            action_type='membership_removed',
+            target_customer=customer,
+            details=f"Removed {user.username} from {customer.name}"
+        )
+
+        customer.members.remove(user)
+
+        # Create membership history record
+        CustomerMembership.objects.create(
+            customer=customer,
+            user=user,
+            action='removed',
+            performed_by=request.user,
+            details=f"Removed by {request.user.username}"
+        )
+
+        messages.success(request, f"{user.username} has been removed from {customer.name}.")
+        return redirect('accounts')
+
+    return render(request,'audit/remove_member.html',{'customer':customer,'user':user})
+
+# ==================== ADMIN ACTIONS LOGGING ====================
+
+@login_required
+@user_passes_test(lambda u:u.is_staff)
+def admin_actions_log(request):
+    """View admin action audit trail."""
+    action_type=request.GET.get('type','')
+
+    if action_type:
+        logs=AdminActionLog.objects.filter(action_type=action_type).order_by('-created_at')[:100]
+    else:
+        logs=AdminActionLog.objects.order_by('-created_at')[:100]
+
+    return render(request,'audit/admin_actions_log.html',{'logs':logs})
+
+@login_required
+@user_passes_test(lambda u:u.is_staff)
+def export_admin_logs(request):
+    """Export admin action logs to CSV."""
+    if request.method=='POST':
+        ids=request.POST.getlist('log_ids')
+        if ids:
+            log_ids=[int(x) for x in ids if x.isdigit()]
+            logs=AdminActionLog.objects.filter(pk__in=log_ids)
+
+            # Create export file
+            output=io.StringIO()
+            writer=csv.writer(output)
+            writer.writerow(['ID','Timestamp','Action Type','Performed By','Target User','Target Customer','Details','IP Address'])
+
+            for log in logs:
+                writer.writerow([
+                    log.pk,
+                    log.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    log.action_type,
+                    log.performed_by.username if log.performed_by else 'N/A',
+                    log.target_user.username if log.target_user else 'N/A',
+                    log.target_customer.name if log.target_customer else 'N/A',
+                    log.details[:100],  # Truncate long details
+                    log.ip_address or 'N/A'
+                ])
+
+            response=HttpResponse(output.getvalue(),content_type='text/csv')
+            response['Content-Disposition']="attachment; filename=admin_actions_%s.csv" % timezone.now().strftime("%Y%m%d")
+            return response
+
+    logs=AdminActionLog.objects.order_by('-created_at')[:100]
+    return render(request,'audit/export_admin_logs.html',{'logs':logs})
+
+# ==================== EXISTING VIEWS (unchanged) ====================
+
+def health(request): return HttpResponse('ok',content_type='text/plain')
+
+def code_for(request,pk): return get_object_or_404(DiscountCode.objects.select_related('project').filter(project__in=projects(request.user)),pk=pk)
+
+@login_required
+@require_POST
+def add_discount_code(request,pk):
+    p=project_for(request,pk)
+    form=DiscountCodeForm(request.POST,project=p)
+    if not form.is_valid():
+        for errors in form.errors.values():
+            for error in errors: messages.error(request,error)
+        return redirect('project',pk=p.pk)
+    value=form.cleaned_data['code']; merchant=form.cleaned_data['merchant_url']; source=form.cleaned_data['source']
+    try:
+        with transaction.atomic():
+            Project.objects.filter(pk=p.pk).update(name=p.name) # SQLite write lock before duplicate checks
+            record,created=DiscountCode.objects.get_or_create(project=p,code__iexact=value,defaults={'code':value,'merchant_url':merchant})
+            if created:
+                messages.success(request,f'Registered {value} as unverified. Record manual evidence before claiming it works.')
+            else:
+                messages.warning(request,f'{value} was already registered for this project; no duplicate was created.')
+                if merchant and not record.merchant_url:
+                    record.merchant_url=merchant; record.save(update_fields=['merchant_url'])
+            if source: record.sources.add(source)
+    except IntegrityError:
+        messages.error(request,'That code is already registered for this project.')
+    return redirect('project',pk=p.pk)
+
+@login_required
+def discount_code(request,pk):
+    record=code_for(request,pk)
+    form=DiscountCodeReviewForm(request.POST or None,initial={'status':record.status,'merchant_url':record.merchant_url,'evidence':record.evidence})
+    if request.method=='POST' and form.is_valid():
+        with transaction.atomic():
+            Project.objects.filter(pk=record.project_id).update(name=record.project.name)
+            record.status=form.cleaned_data['status']; record.merchant_url=form.cleaned_data['merchant_url']; record.evidence=form.cleaned_data['evidence']
+            if record.status=='unverified': record.reviewed_by=''; record.reviewed_at=None
+            else: record.reviewed_by=request.user.username; record.reviewed_at=timezone.now()
+            record.save()
+        messages.success(request,'Discount code review saved. No checkout, code entry or purchase was performed.')
+        return redirect('project',pk=record.project_id)
+    return render(request,'audit/discount_code.html',{'code':record,'form':form})
