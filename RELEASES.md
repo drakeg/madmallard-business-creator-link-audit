@@ -22,3 +22,5 @@ No release has been created by this documentation change.
 - Unreleased dependency repair: lock Gunicorn 27.0.1 to match the accepted 27.x requirement; verify WSGI startup and HTTP behavior before local promotion.
 
 - Unreleased (pending review): optional filtered CSV action queue, deduplicated by exact original + tested URL while preserving affiliate parameters and source coverage. No product guarantees.
+
+- Unreleased (in review): transparent unique-link review progress and duplicate-appearance workload counts, explicitly not a measured time-saving claim.

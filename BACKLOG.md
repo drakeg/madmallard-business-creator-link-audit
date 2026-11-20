@@ -9,7 +9,7 @@
 | P1 | Verify invitation/MFA/reset/admin features and safe migration path | 2 | Unverified; no production-user claims |
 | P1 | Tested off-device backup and replacement-stack restoration | 2 | Open; recover and reopen scan report |
 | P1 | Browser/mobile/keyboard/print accessibility | 2 | Open; no visual QA claim until executed |
-| P1 | Unique-link review analytics with measured actions/time | 3 | Planned; consent-based metrics |
+| P1 | Unique-link review workload indicators | 3 | In review: duplicate occurrences collapsed and groups with recorded decisions; actual time-saving measurement remains consent-based |
 | P1 | Creator-facing concise actionable report | 3 | Actionable unique-link CSV export in PR (pending CI); retain full evidence report |
 | P1 | First authorized creator/agency demo and $149 pilot hypothesis test | 3 | No customer validation yet |
 | P2 | Versioned source edits and reversible suggested corrections | 4 | Planned |
@@ -29,3 +29,5 @@ See [docs/BACKLOG.md](docs/BACKLOG.md) for historical delivered work and unresol
 - One-click, tenant-scoped CSV with **one row per exact original + tested URL**, affected source titles, evidence summary, suggested creator action, manual status/notes, original affiliate parameters, and review URL.
 - Filter the export by the same attention/review bucket shown on the page; preserve original affiliate URLs and apply CSV injection escaping to fields. No external publication or state changes.
 - Success criterion: a creator can hand off a compact actionable list without manually copying duplicates; record measured usage only after a real pilot.
+
+- Sprint 3 follow-up: show transparent counts of duplicate appearances consolidated and unique-link groups with any recorded manual decision. Do not claim measured time saved, final review completion, or customer results without evidence.
