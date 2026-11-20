@@ -3,8 +3,8 @@ import re
 
 from .models import DiscountCode, Link
 
-# A code is a single token. Free-text lines such as "MALLARD10 - 10% off" stay
-# source text until a reviewer registers the exact code deliberately.
+# Accept exact code tokens or an explicit "CODE - N% off" owner-supplied note.
+# Do not extract arbitrary words from prose or infer unknown discount codes.
 CODE_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{1,39}$")
 
 
@@ -14,6 +14,14 @@ def code_tokens(text):
     seen = set()
     for line in (text or "").splitlines():
         value = line.strip()
+        if not CODE_PATTERN.fullmatch(value):
+            annotated = re.fullmatch(
+                r"([A-Za-z0-9][A-Za-z0-9._-]{1,39})\s+-\s+\d{1,3}%\s*off",
+                value, flags=re.IGNORECASE,
+            )
+            if not annotated:
+                continue
+            value = annotated.group(1)
         key = value.casefold()
         if CODE_PATTERN.fullmatch(value) and key not in seen:
             values.append(value)

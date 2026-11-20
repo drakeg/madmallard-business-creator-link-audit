@@ -175,7 +175,7 @@ def report(request,pk):
     outcome_summary=list(scan.results.values('category').annotate(count=Count('id')))
     for outcome in outcome_summary: outcome['label']=category_label(outcome['category'])
     category_choices=[{'value':c,'label':category_label(c)} for c in scan.results.values_list('category',flat=True).distinct()]
-    return render(request,'audit/report.html',{'scan':scan,'results':results,'categories':category_choices,'summary':outcome_summary,'destination_mismatches':scan.results.filter(manual_status='wrong_destination').count(),'reviewed':scan.results.exclude(manual_status='unreviewed').count(),'reviewed_urls':scan.results.exclude(manual_status='unreviewed').values('link__url').distinct().count(),'codes':scan.project.discount_codes.prefetch_related('sources').order_by('status','code'),'category':category,'review':review,'query':query,'sources':scan.project.sources.all()})
+    return render(request,'audit/report.html',{'scan':scan,'results':results,'categories':category_choices,'summary':outcome_summary,'destination_mismatches':scan.results.filter(manual_status='wrong_destination').count(),'reviewed':scan.results.exclude(manual_status='unreviewed').count(),'reviewed_urls':scan.results.exclude(manual_status='unreviewed').values('link__url').distinct().count(),'unique_link_count':scan.results.values('link__url').distinct().count(),'codes':scan.project.discount_codes.prefetch_related('sources').order_by('status','code'),'category':category,'review':review,'query':query,'sources':scan.project.sources.all()})
 @login_required
 def review(request,pk):
     result=get_object_or_404(Result.objects.filter(scan__project__in=projects(request.user)).select_related('link__source','scan'),pk=pk)

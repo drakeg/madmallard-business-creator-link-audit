@@ -42,15 +42,17 @@ class DiscountCodeWorkflowTests(TestCase):
         self.client.force_login(self.user)
 
     def test_owner_source_import_registers_exact_codes_case_insensitively(self):
+        # A completed scan locks sources; test the import on a fresh engagement.
+        new_project = Project.objects.create(customer=self.project.customer, name="New import")
         with patch("audit.views.extract", return_value=["https://example.com/product?tag=Creator%2BId"]):
-            response = self.client.post(f"/projects/{self.project.pk}/", {
+            response = self.client.post(f"/projects/{new_project.pk}/", {
                 "title": "Gear list",
                 "content": "Save with MALLARD10",
                 "discount_codes": "MALLARD10\nMALLARD10 - 10% off",
                 "authorized": "on",
             })
         self.assertEqual(response.status_code, 302)
-        record = DiscountCode.objects.get(project=self.project, code="MALLARD10")
+        record = DiscountCode.objects.get(project=new_project, code="MALLARD10")
         self.assertEqual(record.status, "unverified")
         self.assertEqual(record.sources.count(), 1)
         self.assertFalse(DiscountCode.objects.filter(code__startswith="MALLARD10 -").exists())
