@@ -17,7 +17,7 @@ class SourceForm(forms.Form):
 class AccountForm(UserCreationForm):
     customer=forms.ModelChoiceField(queryset=Customer.objects.all(),required=False,empty_label="Select a customer")
     administrator=forms.BooleanField(required=False)
-    
+
     class Meta:
         model=User
         fields=['username','email','first_name','last_name','customer','administrator']
@@ -40,7 +40,7 @@ class InvitationForm(forms.Form):
     email = forms.EmailField(max_length=254, required=True, label="Email address to invite")
     customer = forms.ModelChoiceField(queryset=Customer.objects.all(), required=True, empty_label="Select a customer")
     expires_in_days = forms.IntegerField(required=False, initial=7, min_value=1, max_value=365, label="Invitation expiry (days)")
-    
+
     def clean_email(self):
         email = self.cleaned_data['email']
         # Check if invitation already exists for this customer and email
@@ -53,7 +53,7 @@ class InvitationForm(forms.Form):
 class PasswordResetForm(forms.Form):
     """Form for requesting password reset."""
     email = forms.EmailField(max_length=254, required=True, label="Email address")
-    
+
     def clean_email(self):
         email = self.cleaned_data['email']
         # Check if reset token already exists
@@ -66,7 +66,7 @@ class PasswordResetForm(forms.Form):
 class MFASetupForm(forms.Form):
     """Form for setting up MFA."""
     totp_secret = forms.CharField(max_length=128, required=True, label="TOTP Secret Key (from authenticator app)")
-    
+
     def clean_totp_secret(self):
         secret = self.cleaned_data['totp_secret']
         if len(secret) < 16:
@@ -91,17 +91,17 @@ class MembershipForm(forms.Form):
     action = forms.ChoiceField(choices=[('added', 'Add member'), ('removed', 'Remove member')])
     user = forms.ModelChoiceField(queryset=User.objects.all(), required=True, empty_label="Select a user")
     customer = forms.ModelChoiceField(queryset=Customer.objects.all(), required=True)
-    
+
     def clean(self):
         cleaned_data = super().clean()
         action = cleaned_data.get('action')
         user = cleaned_data.get('user')
         customer = cleaned_data.get('customer')
-        
+
         # Prevent adding same user twice to same customer
         if action == 'added' and CustomerMembership.objects.filter(customer=customer, user=user).exists():
             raise forms.ValidationError(f"User {user.username} is already a member of {customer.name}.")
-        
+
         return cleaned_data
 
 
@@ -110,4 +110,3 @@ class AdminActionForm(forms.ModelForm):
     class Meta:
         model = AdminActionLog
         fields = ['action_type', 'details']
-<EOF>
