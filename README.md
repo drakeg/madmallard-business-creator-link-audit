@@ -60,6 +60,9 @@ account sign-in or OAuth is used. See [setup, retention and limits](docs/YOUTUBE
    link notes. Deleting a baseline removes its retest reference; deleting history resets
    the project’s scan-count allowance. This is a workbench limit, not billing enforcement.
 
+## Discount-code review (in PR #15)
+Owner-supplied discount codes are recorded separately from HTTP link health. Exact tokens and explicit `CODE - 10% off` owner notes may be registered as **unverified**; third-party video descriptions are not automatically treated as validated offers. A reviewer can record merchant, method and evidence for a verified/expired code. The app does not submit checkout forms, prove attribution or publish replacements.
+
 ## Interpretation
 - **broken:** only HTTP 404/410, evidence at check time. Human confirmation is still useful.
 - **access_blocked:** HTTP 401/403. Could be authentication or bot protection; not broken.

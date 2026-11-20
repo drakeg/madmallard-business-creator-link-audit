@@ -14,11 +14,12 @@ from django.shortcuts import render,redirect,get_object_or_404
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
-from .models import Customer,Project,Source,Link,Scan,Result,LoginAttempt,YouTubePreview,AccountInvitation,AccountResetToken,AdminActionLog,UserMFA,AccountStatus,CustomerMembership
-from .forms import SourceForm,AccountForm,ProfileForm,ReviewForm,InvitationForm,PasswordResetForm,MFASetupForm,AccountStatusForm,MembershipForm
+from .models import DiscountCode,Customer,Project,Source,Link,Scan,Result,LoginAttempt,YouTubePreview,AccountInvitation,AccountResetToken,AdminActionLog,UserMFA,AccountStatus,CustomerMembership
+from .forms import DiscountCodeForm,DiscountCodeReviewForm,SourceForm,AccountForm,ProfileForm,ReviewForm,InvitationForm,PasswordResetForm,MFASetupForm,AccountStatusForm,MembershipForm
 from .ingest import extract,uploaded,parameters
 from .network import fetch
 from .presentation import explain,category_label
+from .codes import code_register,register_owner_source_codes,reviewed_commercial_url_count
 
 def projects(user):
     return Project.objects.all() if user.is_staff else Project.objects.filter(customer__members=user).distinct()
@@ -73,6 +74,7 @@ def project(request,pk):
                 rows=[(d['title'] or final,d['original_url'],body.decode('utf-8',errors='replace'),d['discount_codes'])]
             else: rows=[(d['title'] or 'Pasted source',d['original_url'],d['content'],d['discount_codes'])]
             prepared=[]
+            imported_sources=[]
             extraction_notices=[]
             extraction_deadline=time.monotonic()+20
             for title,url,content,codes in rows:
@@ -88,12 +90,15 @@ def project(request,pk):
                 if len(urls)>settings.MAX_LINKS: raise ValueError('Pilot unique link limit exceeded')
                 for title,url,content,codes,links in prepared:
                     source=Source.objects.create(project=p,title=title,original_url=url,content=content,codes=codes)
+                    imported_sources.append(source)
                     Link.objects.bulk_create([Link(source=source,url=u,affiliate_parameters=parameters(u)) for u in links])
+                registered=register_owner_source_codes(p,imported_sources)
             for notice in extraction_notices: messages.warning(request,notice)
             messages.success(request,f'Imported {len(rows)} source(s); original content and link associations preserved.')
+            if registered: messages.info(request,f'Registered {registered} exact discount code(s) as unverified. Record manual evidence before claiming a code works.')
             return redirect('project',pk=p.pk)
         except Exception as exc: form.add_error(None,str(exc)[:500])
-    return render(request,'audit/project.html',{'project':p,'form':form,'sources':p.sources.prefetch_related('links'),'scans':p.scans.order_by('-created'),'max_sources':settings.MAX_SOURCES,'max_links':settings.MAX_LINKS,'youtube_preview':YouTubePreview.objects.filter(project=p,user=request.user,expires_at__gt=timezone.now()).order_by('-expires_at').first(),'youtube_import_count':p.sources.exclude(youtube_video_id='').count(),'latest_scan':p.scans.order_by('-created').first()})
+    return render(request,'audit/project.html',{'project':p,'form':form,'sources':p.sources.prefetch_related('links'),'scans':p.scans.order_by('-created'),'max_sources':settings.MAX_SOURCES,'max_links':settings.MAX_LINKS,'youtube_preview':YouTubePreview.objects.filter(project=p,user=request.user,expires_at__gt=timezone.now()).order_by('-expires_at').first(),'youtube_import_count':p.sources.exclude(youtube_video_id='').count(),'latest_scan':p.scans.order_by('-created').first(),'discount_codes':p.discount_codes.prefetch_related('sources').order_by('status','code'),'code_form':DiscountCodeForm(project=p),'reviewed_urls':reviewed_commercial_url_count(p),'review_limit':10})
 @login_required
 @require_POST
 def start_scan(request,pk):
@@ -130,7 +135,7 @@ def report(request,pk):
     outcome_summary=list(scan.results.values('category').annotate(count=Count('id')))
     for outcome in outcome_summary: outcome['label']=category_label(outcome['category'])
     category_choices=[{'value':c,'label':category_label(c)} for c in scan.results.values_list('category',flat=True).distinct()]
-    return render(request,'audit/report.html',{'scan':scan,'results':results,'categories':category_choices,'summary':outcome_summary,'destination_mismatches':scan.results.filter(manual_status='wrong_destination').count(),'reviewed':scan.results.exclude(manual_status='unreviewed').count(),'category':category,'review':review,'query':query,'sources':scan.project.sources.all()})
+    return render(request,'audit/report.html',{'scan':scan,'results':results,'categories':category_choices,'summary':outcome_summary,'destination_mismatches':scan.results.filter(manual_status='wrong_destination').count(),'reviewed':scan.results.exclude(manual_status='unreviewed').count(),'unique_link_count':scan.results.values('link__url').distinct().count(),'codes':scan.project.discount_codes.prefetch_related('sources').order_by('status','code'),'category':category,'review':review,'query':query,'sources':scan.project.sources.all()})
 @login_required
 def review(request,pk):
     result=get_object_or_404(Result.objects.filter(scan__project__in=projects(request.user)).select_related('link__source','scan'),pk=pk)
@@ -144,7 +149,7 @@ def review(request,pk):
             Project.objects.filter(pk=result.scan.project_id).update(name=result.scan.project.name)
             # Review budget is distinct links per engagement, not individual edits.
             reviewed=Link.objects.filter(source__project=result.scan.project).exclude(manual_status='unreviewed').exclude(url=result.link.url).values('url').distinct().count()
-            if d['manual_status']!='unreviewed' and reviewed>=10: form.add_error(None,'Pilot manual verification limit is 10 links.')
+            if d['manual_status']!='unreviewed' and reviewed>=10: form.add_error(None,'Pilot manual verification limit is 10 distinct commercial URLs; repeated occurrences of one URL count once.')
             else:
                 for obj in (result,result.link):
                     for key,value in d.items(): setattr(obj,key,value)
@@ -158,20 +163,21 @@ def export(request,pk):
     if request.GET.get('format')=='html':
         results=list(results)
         for item in results: item.explanation=explain(item)
-        return render(request,'audit/print.html',{'scan':scan,'results':results})
+        return render(request,'audit/print.html',{'scan':scan,'results':results,'codes':scan.project.discount_codes.prefetch_related('sources').order_by('status','code')})
     class Echo:
         def write(self,value): return value
     def safe(value):
         text='' if value is None else str(value)
         return "'"+text if text.lstrip().startswith(('=','+','-','@','\t','\r')) else text
+    register=json.dumps(code_register(scan.project),ensure_ascii=False)
     def rows():
         writer=csv.writer(Echo())
-        yield writer.writerow(['project','customer','source','source_original_url','source_content','discount_codes_unverified','original_link','tested_url','suspected_affiliate_parameters_exact','category','http_status','redirect_chain','final_destination','checked_at_utc','reason','manual_status','notes','proposed_replacement','reviewed_by','reviewed_at','baseline_scan','previous_category','previous_status','plain_assessment','recommended_action','redirect_count','final_destination_affiliate_parameters'])
+        yield writer.writerow(['project','customer','source','source_original_url','source_content','discount_codes_unverified','original_link','tested_url','suspected_affiliate_parameters_exact','category','http_status','redirect_chain','final_destination','checked_at_utc','reason','manual_status','notes','proposed_replacement','reviewed_by','reviewed_at','baseline_scan','previous_category','previous_status','plain_assessment','recommended_action','redirect_count','final_destination_affiliate_parameters','discount_code_register_json'])
         sources={s.pk:s for s in scan.project.sources.all()}
         for r in results.iterator(chunk_size=10):
             s=sources[r.link.source_id]
             explanation=explain(r)
-            yield writer.writerow([safe(v) for v in [scan.project.name,scan.project.customer.name,s.title,s.original_url,s.content,s.codes,r.link.url,r.tested_url,r.link.affiliate_parameters,r.category,r.status,json.dumps(r.chain),r.final_url,r.checked_at.isoformat(),r.reason,r.manual_status,r.notes,r.replacement,r.reviewed_by,r.reviewed_at,scan.baseline_id,r.previous_category,r.previous_status,explanation["assessment"],explanation["action"],explanation["redirect_count"],explanation["final_parameters"]]])
+            yield writer.writerow([safe(v) for v in [scan.project.name,scan.project.customer.name,s.title,s.original_url,s.content,s.codes,r.link.url,r.tested_url,r.link.affiliate_parameters,r.category,r.status,json.dumps(r.chain),r.final_url,r.checked_at.isoformat(),r.reason,r.manual_status,r.notes,r.replacement,r.reviewed_by,r.reviewed_at,scan.baseline_id,r.previous_category,r.previous_status,explanation["assessment"],explanation["action"],explanation["redirect_count"],explanation["final_parameters"],register]])
     response=StreamingHttpResponse(rows(),content_type='text/csv; charset=utf-8')
     response['Content-Disposition']=f'attachment; filename="audit-{scan.pk}.csv"'
     return response
@@ -619,3 +625,45 @@ def export_admin_logs(request):
 # ==================== EXISTING VIEWS (unchanged) ====================
 
 def health(request): return HttpResponse('ok',content_type='text/plain')
+
+def code_for(request,pk): return get_object_or_404(DiscountCode.objects.select_related('project').filter(project__in=projects(request.user)),pk=pk)
+
+@login_required
+@require_POST
+def add_discount_code(request,pk):
+    p=project_for(request,pk)
+    form=DiscountCodeForm(request.POST,project=p)
+    if not form.is_valid():
+        for errors in form.errors.values():
+            for error in errors: messages.error(request,error)
+        return redirect('project',pk=p.pk)
+    value=form.cleaned_data['code']; merchant=form.cleaned_data['merchant_url']; source=form.cleaned_data['source']
+    try:
+        with transaction.atomic():
+            Project.objects.filter(pk=p.pk).update(name=p.name) # SQLite write lock before duplicate checks
+            record,created=DiscountCode.objects.get_or_create(project=p,code__iexact=value,defaults={'code':value,'merchant_url':merchant})
+            if created:
+                messages.success(request,f'Registered {value} as unverified. Record manual evidence before claiming it works.')
+            else:
+                messages.warning(request,f'{value} was already registered for this project; no duplicate was created.')
+                if merchant and not record.merchant_url:
+                    record.merchant_url=merchant; record.save(update_fields=['merchant_url'])
+            if source: record.sources.add(source)
+    except IntegrityError:
+        messages.error(request,'That code is already registered for this project.')
+    return redirect('project',pk=p.pk)
+
+@login_required
+def discount_code(request,pk):
+    record=code_for(request,pk)
+    form=DiscountCodeReviewForm(request.POST or None,initial={'status':record.status,'merchant_url':record.merchant_url,'evidence':record.evidence})
+    if request.method=='POST' and form.is_valid():
+        with transaction.atomic():
+            Project.objects.filter(pk=record.project_id).update(name=record.project.name)
+            record.status=form.cleaned_data['status']; record.merchant_url=form.cleaned_data['merchant_url']; record.evidence=form.cleaned_data['evidence']
+            if record.status=='unverified': record.reviewed_by=''; record.reviewed_at=None
+            else: record.reviewed_by=request.user.username; record.reviewed_at=timezone.now()
+            record.save()
+        messages.success(request,'Discount code review saved. No checkout, code entry or purchase was performed.')
+        return redirect('project',pk=record.project_id)
+    return render(request,'audit/discount_code.html',{'code':record,'form':form})

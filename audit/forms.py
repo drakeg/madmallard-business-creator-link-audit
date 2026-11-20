@@ -1,7 +1,8 @@
+import re
 from django import forms
 from django.contrib.auth.forms import UserCreationForm,PasswordChangeForm
 from django.contrib.auth.models import User
-from .models import Customer, AccountInvitation, AccountResetToken, AdminActionLog, UserMFA, AccountStatus, CustomerMembership
+from .models import DiscountCode,Source,Customer, AccountInvitation, AccountResetToken, AdminActionLog, UserMFA, AccountStatus, CustomerMembership
 
 
 class SourceForm(forms.Form):
@@ -110,3 +111,26 @@ class AdminActionForm(forms.ModelForm):
     class Meta:
         model = AdminActionLog
         fields = ['action_type', 'details']
+
+class DiscountCodeForm(forms.Form):
+    code=forms.CharField(max_length=80,label='Discount code')
+    merchant_url=forms.URLField(required=False,label='Merchant or product URL (optional)')
+    source=forms.ModelChoiceField(queryset=Source.objects.none(),required=False,label='Mentioned in source (optional)')
+    def __init__(self,*args,project=None,**kwargs):
+        super().__init__(*args,**kwargs)
+        self.fields['source'].queryset=project.sources.all() if project else Source.objects.none()
+    def clean_code(self):
+        value=self.cleaned_data['code'].strip()
+        if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{1,39}',value):
+            raise forms.ValidationError('Enter one code using letters, numbers, dots, underscores or hyphens.')
+        return value
+
+class DiscountCodeReviewForm(forms.Form):
+    status=forms.ChoiceField(choices=DiscountCode.STATUS_CHOICES,label='Manual status')
+    merchant_url=forms.URLField(required=False,label='Merchant or product URL')
+    evidence=forms.CharField(required=False,widget=forms.Textarea(attrs={'rows':4}),label='Evidence and method')
+    def clean(self):
+        data=super().clean()
+        if data.get('status') in ('verified','expired') and not (data.get('evidence') or '').strip():
+            self.add_error('evidence','Record what you checked and how you checked it.')
+        return data

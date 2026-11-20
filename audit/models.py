@@ -1,5 +1,6 @@
 import uuid
 from django.db import models
+from django.db.models.functions import Lower
 from django.utils import timezone
 from django.contrib.auth.models import User
 class Customer(models.Model):
@@ -234,6 +235,21 @@ class CustomerMembership(models.Model):
         return f"{self.user.username} {'added' if self.action == 'added' else 'removed'} from {self.customer.name}"
 
 
+
+class DiscountCode(models.Model):
+    STATUS_CHOICES=(('unverified','Unverified'),('verified','Working — manually verified'),('expired','Expired or invalid — manually verified'),('needs_owner','Owner decision needed'))
+    project=models.ForeignKey(Project,on_delete=models.CASCADE,related_name='discount_codes')
+    code=models.CharField(max_length=80)
+    merchant_url=models.TextField(blank=True)
+    status=models.CharField(max_length=24,choices=STATUS_CHOICES,default='unverified')
+    evidence=models.TextField(blank=True)
+    reviewed_by=models.CharField(max_length=150,blank=True)
+    reviewed_at=models.DateTimeField(null=True,blank=True)
+    sources=models.ManyToManyField(Source,related_name='discount_codes',blank=True)
+    created=models.DateTimeField(auto_now_add=True)
+    class Meta:
+        constraints=[models.UniqueConstraint(Lower('code'),'project',name='unique_project_discount_code')]
+    def __str__(self): return self.code
 
 class YouTubePreview(models.Model):
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)

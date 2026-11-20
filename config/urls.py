@@ -3,6 +3,8 @@ from django.contrib.auth.views import LogoutView
 from audit import views, youtube_views, quick_views
 
 urlpatterns=[
+    path('projects/<int:pk>/codes/add/',views.add_discount_code,name='add_discount_code'),
+    path('codes/<int:pk>/',views.discount_code,name='discount_code'),
     path('reports/<int:pk>/summary/',quick_views.quick_report,name='quick_report'),
     path('reports/<int:pk>/inspect/',quick_views.inspect_destinations,name='inspect_destinations'),
     path('reports/<int:pk>/unique/<int:result_id>/',quick_views.review_unique,name='review_unique'),

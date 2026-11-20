@@ -14,12 +14,12 @@
 - [x] Explain redirects and suspected wrong landing pages (merged)
 - [x] Detect explicit Amazon product ID redirection mismatch (merged)
 - [ ] PR #14: Content-aware heuristics, unique-link prioritization and shared preview-confirm review; merge only on passing checks
-- [ ] PR #15: Accessibility/mobile audit remediation; resolve failing CI and evaluate overlap
+- [ ] PR #15: Accessibility, discount-code register and migration integration; verify merged CI and browser workflows
 **Acceptance:** Creator can view one ranked unique-link review queue; original affiliate URLs are never silently rewritten; full test suite, migration checks and LAN smoke pass.
 
 ## Sprint 2 — Reliability, security and standards (current parallel sprint)
 - [x] Resolve default-branch CI failure (green main checks after PR #14/#16)
-- [ ] Align Django 5.2 LTS manifest and locked version (validation pending)
+- [x] Align Django 5.2 LTS manifest and locked version (PR #17; CI verified)
 - [ ] Adopt central standards with verified badges, root Agile documents, Security and release policy
 - [ ] Validate account invitation/MFA/administration behavior and migrations before customer data
 - [ ] Confirm persistent backup and replacement-stack restore exercise
