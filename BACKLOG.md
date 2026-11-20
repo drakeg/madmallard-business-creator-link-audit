@@ -29,3 +29,5 @@ See [docs/BACKLOG.md](docs/BACKLOG.md) for historical delivered work and unresol
 - One-click, tenant-scoped CSV with **one row per exact original + tested URL**, affected source titles, evidence summary, suggested creator action, manual status/notes, original affiliate parameters, and review URL.
 - Filter the export by the same attention/review bucket shown on the page; preserve original affiliate URLs and apply CSV injection escaping to fields. No external publication or state changes.
 - Success criterion: a creator can hand off a compact actionable list without manually copying duplicates; record measured usage only after a real pilot.
+
+- Dependency housekeeping: Renovate can suggest patch/minor releases within the verified Django 5.2 LTS line; major Django 6 must have an independent planned migration and pinned lock update. Keep locked dependency and declared constraints consistent in PRs.
