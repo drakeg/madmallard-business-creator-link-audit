@@ -60,8 +60,14 @@ account sign-in or OAuth is used. See [setup, retention and limits](docs/YOUTUBE
    link notes. Deleting a baseline removes its retest reference; deleting history resets
    the project’s scan-count allowance. This is a workbench limit, not billing enforcement.
 
-## Discount-code review (in PR #15)
+## Discount-code review
 Owner-supplied discount codes are recorded separately from HTTP link health. Exact tokens and explicit `CODE - 10% off` owner notes may be registered as **unverified**; third-party video descriptions are not automatically treated as validated offers. A reviewer can record merchant, method and evidence for a verified/expired code. The app does not submit checkout forms, prove attribution or publish replacements.
+
+## Use the time-saving action export
+
+On a completed scan, select **Quick Review**, then choose an issue category such as **Needs attention** and click **Download action list (CSV)**. Open the CSV in LibreOffice or Excel. Each row represents one exact original-and-tested URL combination, so the same link appearing across multiple videos is consolidated. The file includes the suspected issue, evidence summary, all affected source titles, and a review URL that opens on your trusted LAN.
+
+Work from highest priority downward, using recorded evidence and the review link to confirm or reject suggestions. Keep the original affiliate URL unchanged unless you deliberately approve a replacement; the app never publishes or modifies YouTube descriptions. Duplicate counts represent repeated appearances, **not measured minutes saved**. HTTP success, identifiers and a working discount code cannot be guaranteed solely by automated inspection.
 
 ## Interpretation
 - **broken:** only HTTP 404/410, evidence at check time. Human confirmation is still useful.
