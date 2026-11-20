@@ -77,7 +77,7 @@ HTML entities in hrefs are decoded to the actual navigable URL; raw source is re
 Discount codes are owner-supplied and default to unverified. No codes are invented.
 
 ## Architecture & safety
-Python 3.15 runtime declared in Dockerfile; Django 5.2.19 currently pinned in requirements.lock, although requirements.txt declares Django 6.1. This mismatch is a tracked P0 dependency-alignment issue. Also uses urllib3 and Gunicorn.
+Python 3.15 runtime declared in Dockerfile; Django 5.2 LTS range in requirements.txt with Django 5.2.19 locked in requirements.lock, plus urllib3 and Gunicorn. Dependency updates require a verified lockfile and passing CI before adoption.
 Independent Django auth (PBKDF2 passwords, CSRF, server sessions), no private auth copied from
 other projects. Membership checks apply to project reads/writes, reports, reviews and exports.
 SQLite schema migrations and a dedicated persistent volume; one worker. Scan queue is capped

@@ -2,7 +2,7 @@
 
 | Priority | Item | Sprint | State / acceptance |
 | --- | --- | --- | --- |
-| P0 | Repair main CI and reconcile Django 6.1 vs pinned 5.2.19 and runtime Python 3.15 | 2 | Open; verify compatible lock and reproducible full CI/build |
+| P0 | Maintain green main CI and consistent Django 5.2 LTS manifest/lock | 2 | CI repaired by PR #14/#16; requirement alignment under review; verify next CI/build |
 | P0 | Resolve PR #15 failing accessibility pipeline without losing PR #14 features | 2 | Open; green CI and representative browser checks |
 | P0 | Merge PR #14 scoped auto-triage and shared unique-link reviews | 1 | Green PR CI reported; awaiting review/merge |
 | P0 | Adopt docs/badges/central validation and LAN Compose defaults | 2 | In progress; audit/check and functional tests required |
