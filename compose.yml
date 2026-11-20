@@ -5,7 +5,7 @@ services:
     image: madmallard-creator-link-audit:local
     env_file: .env
     ports:
-      - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-8042}:8000"
+      - "${BIND_ADDRESS:-0.0.0.0}:${PORT:-8042}:8000"
     volumes:
       - audit-data:/data
     restart: unless-stopped

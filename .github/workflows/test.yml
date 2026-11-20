@@ -11,6 +11,7 @@ jobs:
         with:
           python-version: '3.15'
       - run: pip install -r requirements.lock
+      - run: python scripts/validate_repository.py && PYTHONPATH=scripts python -m unittest scripts/test_validate_repository.py -v
       - run: python manage.py check && python manage.py makemigrations --check --dry-run && python manage.py test audit -v 2
       - run: docker build -t audit:test .
       - run: docker run --rm audit:test lychee --version
