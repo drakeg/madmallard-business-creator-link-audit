@@ -46,3 +46,11 @@ It never clicks buttons that write data. Do not run the fixture command against
 port 8042, port 8043, or an existing customer database. Prefer a new disposable
 volume for each run, preserve it for inspection until the QA is complete, and
 remove it only after the operator confirms it contains no needed records.
+
+## Worker integration test without public network
+
+The `audit.test_worker_e2e` tests use Django's real scan queue and worker
+command but stub outbound link checks. The suite requires no public network
+and does not exercise merchant content or attribution. To reproduce in a
+development container, run `python manage.py test audit.test_worker_e2e`.
+Do not run the production worker against a test database shared with real creators.

@@ -30,3 +30,5 @@ No application release or public open-source license has been created.
 - Unreleased: suppress Gunicorn 27 optional control-socket errors in read-only Docker runtime (no change to HTTP service).
 
 - Unreleased (in review): isolated synthetic creator-report browser acceptance fixture and read-only Chrome checks for linked project, distinct affiliate IDs, action CSV and printable report.
+
+- Unreleased (in review): network-isolated queued-scan/worker integration regressions covering unique-link deduplication, error handling and export/customer scoping.
