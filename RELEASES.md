@@ -36,3 +36,5 @@ No application release or public open-source license has been created.
 - Unreleased (in review): automatic PR-time Chrome synthetic creator-workflow checks using random, ephemeral local-only credentials and database.
 
 - Unreleased (in review): actionable first-run customer organization guidance, no dead-end project form, and valid account administration card markup.
+
+- Unreleased (in review): bounded retry and diagnostics for intermittent headless Chrome startup on GitHub runners, without weakening browser assertions or sandbox.
