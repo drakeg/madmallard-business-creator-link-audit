@@ -9,7 +9,7 @@
 - [x] Local Compose with persistent SQLite and isolated backup verification
 **Acceptance:** Core HTTP workflows and isolation tests passed in original MVP PRs; full production and browser QA remains outstanding.
 
-## Sprint 1 — Better evidence and workflow (implemented; browser QA pending)
+## Sprint 1 — Better evidence and workflow (implemented; browser QA ongoing; synthetic project/report/CSV acceptance added in review)
 - [x] Public YouTube description loading/import, saved previews and error recovery (merged)
 - [x] Explain redirects and suspected wrong landing pages (merged)
 - [x] Detect explicit Amazon product ID redirection mismatch (merged)

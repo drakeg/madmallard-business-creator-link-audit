@@ -28,3 +28,21 @@ AUDIT_BASE_URL=http://LAN-IP:8045 AUDIT_CREDENTIALS_FILE="$HOME/.config/madmalla
 ```
 
 The test creates and deletes an isolated Chrome profile; checks contrast, horizontal overflow, main landmarks, form CSRF markup, keyboard navigation to the skip link, authenticated desktop/mobile views and print layout. It only navigates pages and signs in. It does not mutate creator data or print passwords. Set `CHROME_PATH` to the local Chrome executable if needed. Do not expose Chrome's ephemeral debugging port to the LAN.
+
+## Synthetic creator workflow browser QA (isolated database only)
+
+Run the fixture on a **new, empty named Docker volume** and a separate test server port.
+Use the existing browser smoke script with `AUDIT_FIXTURE_FILE` pointing to the JSON
+emitted by `manage.py seed_synthetic_browser_fixture --confirm-synthetic-only`.
+This fixture requires `AUDIT_ALLOW_SYNTHETIC_FIXTURES=1` in the isolated environment
+and refuses any database containing a customer, project, source, or scan.
+It creates three synthetic link uses with two distinct affiliate parameters and
+a completed **simulated** scan; no public requests, real scan jobs, customer input,
+third-party content, or writes to the main preview are involved.
+
+The expanded browser smoke covers the signed-in project, unique-link review,
+CSV action export, affiliate parameter isolation, and the printable audit report.
+It never clicks buttons that write data. Do not run the fixture command against
+port 8042, port 8043, or an existing customer database. Prefer a new disposable
+volume for each run, preserve it for inspection until the QA is complete, and
+remove it only after the operator confirms it contains no needed records.

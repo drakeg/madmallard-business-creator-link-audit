@@ -28,3 +28,5 @@ No application release or public open-source license has been created.
 - Unreleased (in review): real-browser accessibility fix for heading contrast, semantic landmarks/cards, and reusable LAN smoke tests for desktop/mobile/print/keyboard.
 
 - Unreleased: suppress Gunicorn 27 optional control-socket errors in read-only Docker runtime (no change to HTTP service).
+
+- Unreleased (in review): isolated synthetic creator-report browser acceptance fixture and read-only Chrome checks for linked project, distinct affiliate IDs, action CSV and printable report.
