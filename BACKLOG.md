@@ -50,6 +50,12 @@ See [docs/BACKLOG.md](docs/BACKLOG.md) for historical delivered work and unresol
 ## Gunicorn 27 read-only runtime compatibility
 - Observed Gunicorn 27 attempting to create its optional control socket under non-writable /home/audit/.gunicorn in Docker. App HTTP remained responsive, but emitted an ERROR at startup. Dockerfile now disables this optional interface; the application server still runs with read-only root filesystem and drops all Linux capabilities.
 
+## Sprint 3 — synthetic full-report browser acceptance
+
+- In progress: explicit synthetic-only, empty-database fixture command for deterministic completed scan evidence, three source uses, two unique affiliate URLs and a private QA volume.
+- Extend authenticated Chrome smoke to verify the project, Quick Review deduplication, CSV export preserving exact affiliate IDs, and printable evidence report, including mobile layout and print-header behavior.
+- Still outstanding: automated scan-worker network tests with controlled local HTTP fixtures, real customer consent-based evaluation, full keyboard/screen-reader audit.
+
 ## Sprint 3 — worker/database integration regression
 
 - In review: integration tests post a real scan request, run the actual persistent worker loop, stub only outbound HTTP (no internet), and assert one request per unique exact URL, correct result fanout across three sources, distinct affiliate IDs, report CSV/print and cross-customer 404s.

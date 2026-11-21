@@ -9,6 +9,7 @@ import { join } from 'node:path';
 const base = (process.env.AUDIT_BASE_URL || 'http://192.168.0.155:8043').replace(/\/$/, '');
 const chromePath = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const credentialsFile = process.env.AUDIT_CREDENTIALS_FILE;
+const fixtureFile = process.env.AUDIT_FIXTURE_FILE;
 const directory = await mkdtemp(join(tmpdir(), 'creator-browser-smoke-'));
 let chrome, socket;
 let requestId = 0;
@@ -74,7 +75,7 @@ async function checkPage(name) {
     skipLink: !!document.querySelector('a.skip[href="#main"]'),
     mainLandmarks: document.querySelectorAll('main, [role="main"]').length,
     missingImageAlt: document.querySelectorAll('img:not([alt])').length,
-    invalidForms: Array.from(document.forms).filter(f => !f.querySelector('input[name="csrfmiddlewaretoken"]')).length,
+    invalidForms: Array.from(document.forms).filter(f => f.method.toLowerCase() === 'post' && !f.querySelector('input[name="csrfmiddlewaretoken"]')).length,
     focused: !!document.activeElement,
   }))()`);
   insist(state.heading, name + ': no main heading');
@@ -140,6 +141,33 @@ try {
     insist(await evalPage("getComputedStyle(document.querySelector('header')).display === 'none'"),'print header remains visible');
     await send('Emulation.setEmulatedMedia',{media:''});
     checks.push({page:'print header hidden',result:'passed'});
+    if (fixtureFile) {
+      const fixture = JSON.parse(await readFile(fixtureFile,'utf8'));
+      insist(fixture.synthetic === true, 'Only explicit synthetic fixtures may be tested');
+      await navigate(fixture.project_path);
+      checks.push(await checkPage('mobile synthetic project'));
+      await navigate(fixture.review_path);
+      checks.push(await checkPage('mobile synthetic review'));
+      const unique = await evalPage("document.querySelector('main h1')?.textContent || ''");
+      insist(unique.includes('2 unique links') && unique.includes('3 uses'), 'Incorrect unique link consolidation');
+      const grouped = await evalPage("document.querySelectorAll('a[href*=unique]').length");
+      insist(grouped===fixture.expected_unique,'Wrong count of unique review links');
+      const exportResult = await evalPage(`(async()=> {
+        const r=await fetch(${JSON.stringify(base)} + ${JSON.stringify(fixture.csv_path)}, {credentials:'same-origin'});
+        return {status:r.status,body:await r.text(),type:r.headers.get('content-type')};
+      })()`);
+      insist(exportResult.status===200 && exportResult.type.includes('text/csv'),'Action list CSV inaccessible');
+      const lines = exportResult.body.trim().split(/\r?\n/);
+      insist(lines.length===3,'Action list CSV should have header and two distinct links');
+      insist(exportResult.body.includes('synthetic-creator') && exportResult.body.includes('synthetic-other'), 'Different affiliate IDs incorrectly collapsed');
+      checks.push({page:'authenticated CSV export',result:'passed',uniqueLinks:2,sourceOccurrences:3});
+      await navigate(fixture.print_path);
+      checks.push(await checkPage('mobile printable audit report'));
+      await send('Emulation.setEmulatedMedia',{media:'print'});
+      insist(await evalPage("getComputedStyle(document.querySelector('header')).display === 'none'"),'Print report header visible');
+      await send('Emulation.setEmulatedMedia',{media:''});
+      checks.push({page:'printed audit report header',result:'passed'});
+    }
   }
   console.log(JSON.stringify({passed:true,checks},null,2));
 } catch (error) {
