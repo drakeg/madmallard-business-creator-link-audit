@@ -16,7 +16,7 @@ jobs:
       - run: python manage.py check && python manage.py makemigrations --check --dry-run && python manage.py test audit -v 2
       - uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: '26'
       - run: bash scripts/run_ci_browser_smoke.sh
       - run: docker build -t audit:test .
       - run: docker run --rm audit:test lychee --version
