@@ -72,3 +72,6 @@ See [docs/BACKLOG.md](docs/BACKLOG.md) for historical delivered work and unresol
 - Correct previously malformed organization-admin card markup and add real desktop/mobile Chrome smoke coverage.
 
 - Extend browser CI to verify the zero-organization state before the synthetic fixture is seeded, then repeat the populated project/report flow. No customer records outside the ephemeral runner.
+
+## CI Chrome startup reliability
+- In review: recent Renovate GitHub Actions runs showed intermittent `Chrome did not start its debugging endpoint` failures on Ubuntu runners while other runs passed. Add isolated startup retries with bounded wait and diagnostic Chrome stderr, retain browser sandbox, and never ignore content/contrast assertions.
