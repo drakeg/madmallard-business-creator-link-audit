@@ -46,7 +46,6 @@ os.chmod(p,0o600)
 PY
 python manage.py migrate --noinput >/dev/null
 python manage.py bootstrap >/dev/null
-python manage.py seed_synthetic_browser_fixture --confirm-synthetic-only > "$workdir/fixture.json"
 gunicorn config.wsgi:application --bind 127.0.0.1:8046 --workers 1 --threads 2 --timeout 60 --no-control-socket >"$workdir/server.log" 2>&1 &
 server_pid=$!
 ready="false"
@@ -66,6 +65,16 @@ export AUDIT_BASE_URL="http://127.0.0.1:8046"
 export AUDIT_CREDENTIALS_FILE="$workdir/credentials.env"
 export AUDIT_FIXTURE_FILE="$workdir/fixture.json"
 export CHROME_PATH="$BROWSER"
+# First exercise the empty admin workspace before inserting any customer rows.
+unset AUDIT_FIXTURE_FILE
+if ! node scripts/browser_smoke.mjs; then
+  echo "CI empty-workspace browser acceptance failed:" >&2
+  tail -35 "$workdir/server.log" >&2
+  exit 1
+fi
+# Only this newly created disposable database may receive synthetic scan data.
+python manage.py seed_synthetic_browser_fixture --confirm-synthetic-only > "$workdir/fixture.json"
+export AUDIT_FIXTURE_FILE="$workdir/fixture.json"
 if ! node scripts/browser_smoke.mjs; then
   echo "CI Chrome acceptance failed; local app server log:" >&2
   tail -35 "$workdir/server.log" >&2

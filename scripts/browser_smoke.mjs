@@ -131,12 +131,25 @@ try {
       document.querySelector('form').requestSubmit(); return true; })()`);
     await waitFor('location.pathname === "/" && !!document.querySelector("main h1")','authenticated dashboard',100);
     checks.push(await checkPage('desktop dashboard'));
+    await navigate('/accounts/');
+    checks.push(await checkPage('desktop accounts administration'));
 
     await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:2,mobile:true});
     await navigate('/');
     checks.push(await checkPage('mobile dashboard'));
     await navigate('/profile/');
     checks.push(await checkPage('mobile profile'));
+    await navigate('/accounts/');
+    checks.push(await checkPage('mobile accounts administration'));
+    await navigate('/');
+    const noOrganization = await evalPage("document.querySelectorAll('#customer-select option').length === 0");
+    if (noOrganization) {
+      insist(await evalPage("document.querySelector('main')?.innerText.includes('Create a customer organization first')"),
+        'Admin missing first-organization onboarding guidance');
+      insist(await evalPage("!document.querySelector('form[action*=projects]')"),
+        'Create project form should not appear without a customer organization');
+      checks.push({page:'empty-workspace onboarding',result:'passed'});
+    }
     await send('Emulation.setEmulatedMedia',{media:'print'});
     insist(await evalPage("getComputedStyle(document.querySelector('header')).display === 'none'"),'print header remains visible');
     await send('Emulation.setEmulatedMedia',{media:''});
