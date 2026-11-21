@@ -22,7 +22,7 @@
 - [x] Align Django 5.2 LTS manifest and locked version (PR #17; CI verified)
 - [x] Adopt central standards with verified badges, root Agile documents, Security and release policy (PR #16)
 - [ ] Complete secure invitation/recovery/MFA delivery and admin browser QA. PR #19 blocks unsupported flows; authentication status and migrations are tested.
-- [x] Consistent preview SQLite backup + disposable restore verified before 8043 upgrades; off-device backup remains P1 backlog
+- [x] Consistent preview SQLite backup + disposable restore verified before 8043 upgrades; verified host export implementation in review, off-device backup remains P1 backlog
 - [ ] Real browser mobile, keyboard, accessibility and print-report smoke tests
 **Acceptance:** CI green on merged main, reproducible locked container build and documented rollback; no regression in project/customer isolation; application usable over trusted LAN.
 

@@ -22,3 +22,5 @@ A PR merge alone does not require a release. A meaningful, tested milestone with
 **Local verification:** GitHub CI green on merged main; isolated Docker tests for review features and full application; trusted-LAN preview on port 8043 with image matching merged main; preview backup and restore verified. No full real-browser accessibility or customer pilot validation claimed.
 
 No application release or public open-source license has been created.
+
+- Unreleased (in review): host-side SQLite backup export with no-overwrite semantics, content integrity comparison, restore check, and non-destructive recovery instructions.
