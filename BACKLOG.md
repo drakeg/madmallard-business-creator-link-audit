@@ -80,3 +80,14 @@ See [docs/BACKLOG.md](docs/BACKLOG.md) for historical delivered work and unresol
 - Admins may issue an expiring, single-use-on-password-change reset link for an active account; no SMTP/email integration is claimed. Staff can only reset staff accounts when acting as a superuser. A new signed-out user can choose a new password using Django's validated SetPasswordForm.
 - Record issuance in the existing admin action log without persisting the token; require POST/CSRF and no-store responses. Normal self-service email reset and MFA remain unavailable pending enforced delivery/second factor.
 - This local pilot uses plaintext HTTP on a trusted LAN. **Require HTTPS before publicly sharing reset links or accepting production customers.**
+
+## Sprint 2 — off-device recovery (in review)
+- Implement a local read-only, network-disabled Docker recovery drill for a
+  private exported backup and exact application image; validate SQLite checksum,
+  Django system/migration compatibility and FK integrity on an ephemeral database.
+- Provide APFS Encrypted/external NAS export and recovery instructions, without
+  claiming off-device protection until an actual independent mount is used.
+- Pending: operator-selected external storage, recovery tested on a replacement
+  machine, confirmed retention schedule and measured full-stack RPO/RTO.
+
+- Add CI restore rehearsal against a throwaway migrated fixture database and the newly built image; continue to use separate, manually verified snapshots for actual Mac recovery.

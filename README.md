@@ -143,3 +143,7 @@ No repository-level open-source license has yet been chosen; vendored dependency
 ## Administrator-assisted password recovery
 
 On the **Customers & accounts** page, a staff administrator can issue a short-lived recovery link for an active customer account and share it privately. Only a superuser may issue links for staff accounts. Links are invalid after password change; the system records issuance without storing the link. There is no email delivery or self-service forgot-password feature yet. The HTTP LAN test environment is not appropriate for exchanging reset links outside a trusted local network; production use requires HTTPS.
+
+## Backup portability and disaster recovery
+
+For encrypted off-device exports and a non-destructive, network-disabled Docker recovery rehearsal, see [Disaster recovery](docs/DISASTER_RECOVERY.md). A host backup alone is not off-device protection; actual replacement-stack RTO/RPO have not been measured.

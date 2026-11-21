@@ -64,3 +64,11 @@ The Chrome smoke retries browser startup up to twice using separate temporary pr
 
 ## Administrator-assisted recovery
 Administrators can issue one-hour Django password recovery links from the existing account directory. This is **manual delivery**, not an email feature. Issuance is audited (not the secret token), POST/CSRF-protected and restricted: only superusers can issue links for staff accounts. Links stop working after the target password changes. Never log, paste in public tickets or send them over untrusted connections; the current LAN HTTP pilot requires HTTPS before public/customer deployment. Email reset and MFA remain disabled. Test with `python manage.py test audit.test_admin_recovery`.
+
+## Off-device recovery
+See `docs/DISASTER_RECOVERY.md` for an encrypted external-storage export, offline
+container restore rehearsal and a non-destructive replacement-stack plan. The
+rehearsal script requires an existing private backup file and locally installed
+matching Docker image. It does not require network access or expose ports.
+
+GitHub CI additionally runs `scripts/run_ci_restore_rehearsal.sh` after building the application image. It generates an empty synthetic migrated SQLite database under the temporary runner directory, passes the offline Docker recovery script, then removes the data. It requires `CI=true` and must never be run on live customer data.

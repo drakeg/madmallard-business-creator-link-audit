@@ -22,3 +22,12 @@ The application runs with a read-only root filesystem, so disable Gunicorn's opt
 
 ## Password recovery safety
 The pilot supports administrator-issued one-hour reset links only, using Django's built-in token generator and password validation. Keep issuance staff-only, POST-only, CSRF-protected and no-store. Never persist or log reset tokens or claim email delivery or enforced MFA. Do not expose these links over public HTTP; TLS is mandatory for production use. A reset link changes the account password only after a user completes Django's SetPasswordForm.
+
+## Recovery rehearsal safety
+Backup copies contain customer content and credentials. Keep local exports private
+(mode 0600), use encrypted independent storage for real off-device backups, and
+run `scripts/rehearse_offline_restore.py` in a network-disabled disposable
+container. Never replace or wipe live volumes, open a recovery container to the
+internet, publish an audit database, or auto-delete backups. See
+`docs/DISASTER_RECOVERY.md`; distinguish a rehearsed SQLite/Django check from
+a timed replacement-stack RTO/RPO.
