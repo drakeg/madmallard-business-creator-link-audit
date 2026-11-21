@@ -75,3 +75,14 @@ See [docs/BACKLOG.md](docs/BACKLOG.md) for historical delivered work and unresol
 
 ## CI Chrome startup reliability
 - In review: recent Renovate GitHub Actions runs showed intermittent `Chrome did not start its debugging endpoint` failures on Ubuntu runners while other runs passed. Add isolated startup retries with bounded wait and diagnostic Chrome stderr, retain browser sandbox, and never ignore content/contrast assertions.
+
+## Sprint 2 — off-device recovery (in review)
+- Implement a local read-only, network-disabled Docker recovery drill for a
+  private exported backup and exact application image; validate SQLite checksum,
+  Django system/migration compatibility and FK integrity on an ephemeral database.
+- Provide APFS Encrypted/external NAS export and recovery instructions, without
+  claiming off-device protection until an actual independent mount is used.
+- Pending: operator-selected external storage, recovery tested on a replacement
+  machine, confirmed retention schedule and measured full-stack RPO/RTO.
+
+- Add CI restore rehearsal against a throwaway migrated fixture database and the newly built image; continue to use separate, manually verified snapshots for actual Mac recovery.

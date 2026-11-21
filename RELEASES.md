@@ -38,3 +38,7 @@ No application release or public open-source license has been created.
 - Unreleased (in review): actionable first-run customer organization guidance, no dead-end project form, and valid account administration card markup.
 
 - Unreleased (in review): bounded retry and diagnostics for intermittent headless Chrome startup on GitHub runners, without weakening browser assertions or sandbox.
+
+- Unreleased (in review): non-destructive offline Docker recovery rehearsal for
+  host/external SQLite backups, portability guardrail tests and encrypted
+  off-device/recovery instructions. No network exposure or data deletion.
