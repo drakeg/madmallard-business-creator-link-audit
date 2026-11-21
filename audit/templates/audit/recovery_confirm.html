@@ -1,0 +1,6 @@
+{% extends 'audit/base.html' %}{% block content %}
+<p class="eyebrow">Account recovery</p><h1>Choose a new password</h1><section class="card">
+{% if validlink %}<p>Use a new, unique password. This link will stop working once the password changes.</p>
+<form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Set new password</button></form>
+{% else %}<p role="alert">This recovery link is invalid, expired or already used. Contact your administrator to request another link.</p>{% endif %}
+</section>{% endblock %}

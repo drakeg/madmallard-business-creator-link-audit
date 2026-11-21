@@ -21,8 +21,8 @@
 - [x] Resolve default-branch CI failure (green main checks after PR #14/#16)
 - [x] Align Django 5.2 LTS manifest and locked version (PR #17; CI verified)
 - [x] Adopt central standards with verified badges, root Agile documents, Security and release policy (PR #16)
-- [ ] Complete secure invitation/recovery/MFA delivery and admin browser QA. PR #19 blocks unsupported flows; authentication status and migrations are tested.
-- [x] Consistent preview SQLite backup + disposable restore verified before 8043 upgrades; verified host export merged (#25). Offline Docker disaster recovery drill in review; separate encrypted device, real replacement-stack test and RPO/RTO remain P1.
+- [ ] Complete invitation/recovery/MFA delivery and admin browser QA. Administrator-assisted one-hour single-use password recovery is in review; email self-service and MFA enforcement remain disabled.
+- [x] Consistent preview SQLite backup + disposable restore verified before 8043 upgrades; verified host export merged (#25) and offline Docker disaster recovery drill merged (#35). Separate encrypted device, actual replacement-stack test and measured RPO/RTO remain outstanding.
 - [ ] Real browser mobile, keyboard, accessibility and print smoke tests (headless Chrome implementation in review; print report still needs representative scan fixture)
 **Acceptance:** CI green on merged main, reproducible locked container build and documented rollback; no regression in project/customer isolation; application usable over trusted LAN.
 

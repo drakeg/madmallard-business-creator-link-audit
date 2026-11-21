@@ -158,6 +158,8 @@ try {
     checks.push(await checkPage('desktop dashboard'));
     await navigate('/accounts/');
     checks.push(await checkPage('desktop accounts administration'));
+    insist(await evalPage("document.querySelectorAll('form[action*=recovery-link]').length > 0"),
+      'Staff accounts page lacks manual password recovery action');
 
     await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:2,mobile:true});
     await navigate('/');

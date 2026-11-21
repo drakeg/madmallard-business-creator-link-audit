@@ -39,6 +39,8 @@ No application release or public open-source license has been created.
 
 - Unreleased (in review): bounded retry and diagnostics for intermittent headless Chrome startup on GitHub runners, without weakening browser assertions or sandbox.
 
+- Unreleased (in review): administrator-assisted one-hour account recovery links using Django single-use tokens, CSRF-protected staff-only issuance, superuser guardrails, documented private delivery and no emailed reset claims.
+
 - Unreleased (in review): non-destructive offline Docker recovery rehearsal for
   host/external SQLite backups, portability guardrail tests and encrypted
   off-device/recovery instructions. No network exposure or data deletion.
