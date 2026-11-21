@@ -46,3 +46,6 @@ See [docs/BACKLOG.md](docs/BACKLOG.md) for historical delivered work and unresol
 - Fixed headings that previously rendered white on light paper; Chrome confirmed the existing failure and corrected contrast at 11.23:1 on login/dashboard/profile.
 - Corrected duplicate main landmark on login, malformed profile/dashboard card sections, and dead `/contact/` account-request link.
 - Added no-dependency Chrome CDP smoke for desktop/mobile authenticated pages, skip-link keyboard access, print header CSS and overflow checks. Needs CI verification and representative scan/report browser fixture later.
+
+## Gunicorn 27 read-only runtime compatibility
+- Observed Gunicorn 27 attempting to create its optional control socket under non-writable /home/audit/.gunicorn in Docker. App HTTP remained responsive, but emitted an ERROR at startup. Dockerfile now disables this optional interface; the application server still runs with read-only root filesystem and drops all Linux capabilities.
