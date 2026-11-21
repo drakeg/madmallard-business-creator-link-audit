@@ -7,7 +7,7 @@
 | P0 | Merge PR #14 scoped auto-triage and shared unique-link reviews | 1 | Completed and verified in main |
 | P0 | Adopt docs/badges/central validation and LAN Compose defaults | 2 | Completed in PR #16; ongoing maintenance required |
 | P1 | Verify invitation/MFA/reset/admin features and safe migration path | 2 | Unverified; no production-user claims |
-| P1 | Tested off-device backup and replacement-stack restoration | 2 | Open; recover and reopen scan report |
+| P1 | Secure host snapshot export and external-device recovery | 2 | Operator-controlled host export with SHA256/isolated restore is in review; actual external-device/whole-stack restore still outstanding |
 | P1 | Browser/mobile/keyboard/print accessibility | 2 | Open; no visual QA claim until executed |
 | P1 | Unique-link review workload indicators | 3 | Implemented in PR #22; actual time-savings measurement requires pilot evidence |
 | P1 | Creator-facing concise actionable report | 3 | One-click grouped CSV action list in PR #21, merged; full evidence report retained |
@@ -37,3 +37,7 @@ See [docs/BACKLOG.md](docs/BACKLOG.md) for historical delivered work and unresol
 - Complete the LAN web/browser keyboard, mobile, focus, print and export workflow acceptance tests on realistic non-sensitive fixtures.
 - Add off-device encrypted backup/retention instructions and a documented restore exercise, with no automatic deletion of existing data.
 - Trial the no-publication action export with a consenting creator and measure actual reviews avoided, time and willingness to pay. No prior demand validation is assumed; product coding continues regardless.
+
+## Backup implementation (Sprint 2 hardening)
+- Added a no-overwrite host export command using the application's SQLite online snapshot and isolated restore verification. It deliberately never changes live data or cleans old files.
+- A Mac host folder is off-volume **not** off-device; an external encrypted drive or secured NAS and a replacement-stack browser recovery exercise remain pending.

@@ -10,6 +10,10 @@ A local, private MVP for reviewing RV/travel creators’ product, sponsor and af
 links in older descriptions and blog posts. The $149 pilot is a price hypothesis;
 no paid demand has been validated. No outreach, paid APIs, schedules or cloud deployment.
 
+## Back up your local data safely
+
+From the Mac hosting Docker, use `python3 scripts/export_verified_backup.py --destination ~/Backups/madmallard-creator-link-audit` to export a private, verified SQLite snapshot to the host. This does **not** automatically create an off-device copy; use a protected external drive or NAS destination for off-device backup. The exporter refuses overwrite, performs a disposable restore test, and never changes live data. See [safe backup and recovery procedures](docs/LOCAL_BACKUPS.md).
+
 ## Run locally
 Requires Docker Desktop with Compose. Clone this private repository, copy `.env.example`
 to `.env`, set a random SECRET_KEY (32+ chars) and unique ADMIN_PASSWORD (16+ chars), then:
