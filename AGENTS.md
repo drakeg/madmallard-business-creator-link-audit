@@ -20,6 +20,9 @@ Renovate must not silently switch the project from Django 5.2 LTS to Django 6. A
 ## Gunicorn 27 container safety
 The application runs with a read-only root filesystem, so disable Gunicorn's optional local control socket by using `--no-control-socket` in its Docker command. This keeps serving HTTP without writing to the application user's home directory. Re-test the actual read-only container startup after any Gunicorn upgrade; do not remove `read_only`, `cap_drop`, or `no-new-privileges` to silence a control-server warning.
 
+## Password recovery safety
+The pilot supports administrator-issued one-hour reset links only, using Django's built-in token generator and password validation. Keep issuance staff-only, POST-only, CSRF-protected and no-store. Never persist or log reset tokens or claim email delivery or enforced MFA. Do not expose these links over public HTTP; TLS is mandatory for production use. A reset link changes the account password only after a user completes Django's SetPasswordForm.
+
 ## Recovery rehearsal safety
 Backup copies contain customer content and credentials. Keep local exports private
 (mode 0600), use encrypted independent storage for real off-device backups, and
