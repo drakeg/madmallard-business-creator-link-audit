@@ -26,3 +26,5 @@ No application release or public open-source license has been created.
 - Unreleased (in review): host-side SQLite backup export with no-overwrite semantics, content integrity comparison, restore check, and non-destructive recovery instructions.
 
 - Unreleased (in review): real-browser accessibility fix for heading contrast, semantic landmarks/cards, and reusable LAN smoke tests for desktop/mobile/print/keyboard.
+
+- Unreleased: suppress Gunicorn 27 optional control-socket errors in read-only Docker runtime (no change to HTTP service).

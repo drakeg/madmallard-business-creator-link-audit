@@ -18,4 +18,4 @@ RUN useradd -u 10001 -m audit && mkdir -p /data && chown audit:audit /data
 USER audit
 ENV PYTHONUNBUFFERED=1 DB_PATH=/data/audit.sqlite3
 EXPOSE 8000
-CMD ["sh","-c","python manage.py migrate --noinput && python manage.py bootstrap && exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --threads 2 --timeout 120 --access-logfile -"]
+CMD ["sh","-c","python manage.py migrate --noinput && python manage.py bootstrap && exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --threads 2 --timeout 120 --no-control-socket --access-logfile -"]

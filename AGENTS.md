@@ -16,3 +16,6 @@ Development loop: Build → Deploy → Test → Fix → Redeploy → Continue wi
 
 ## Automated dependency updates
 Renovate must not silently switch the project from Django 5.2 LTS to Django 6. A Django major upgrade needs explicit scope, new lockfile, migration compatibility work, security review, full CI and LAN/browser validation. For all Renovate PRs that change requirements.txt, update requirements.lock together before expecting the required lockfile check to pass. Keep CI's comparison fail-closed; don't suppress failures or assume PR readiness.
+
+## Gunicorn 27 container safety
+The application runs with a read-only root filesystem, so disable Gunicorn's optional local control socket by using `--no-control-socket` in its Docker command. This keeps serving HTTP without writing to the application user's home directory. Re-test the actual read-only container startup after any Gunicorn upgrade; do not remove `read_only`, `cap_drop`, or `no-new-privileges` to silence a control-server warning.
