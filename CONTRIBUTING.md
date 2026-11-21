@@ -54,3 +54,6 @@ command but stub outbound link checks. The suite requires no public network
 and does not exercise merchant content or attribution. To reproduce in a
 development container, run `python manage.py test audit.test_worker_e2e`.
 Do not run the production worker against a test database shared with real creators.
+
+## Continuous browser acceptance
+The GitHub Test MVP workflow runs `scripts/run_ci_browser_smoke.sh` in an ephemeral, isolated runner. It requires `CI=true`, a private `RUNNER_TEMP` directory, installed Chrome, Python/Gunicorn and Node 22. It generates a throwaway administrator password and SQLite database, seeds synthetic scan records, serves localhost only, runs the same browser checks as local LAN QA, then removes temporary files. Run it only on a disposable CI runner, never against a populated customer database.
