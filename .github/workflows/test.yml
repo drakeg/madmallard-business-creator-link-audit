@@ -14,7 +14,7 @@ jobs:
       - run: python scripts/check_lockfile.py && PYTHONPATH=scripts python -m unittest scripts/test_check_lockfile.py -v
       - run: python scripts/validate_repository.py && PYTHONPATH=scripts python -m unittest discover -s scripts -p 'test_*.py' -v
       - run: python manage.py check && python manage.py makemigrations --check --dry-run && python manage.py test audit -v 2
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
       - run: bash scripts/run_ci_browser_smoke.sh
