@@ -41,3 +41,8 @@ See [docs/BACKLOG.md](docs/BACKLOG.md) for historical delivered work and unresol
 ## Backup implementation (Sprint 2 hardening)
 - Added a no-overwrite host export command using the application's SQLite online snapshot and isolated restore verification. It deliberately never changes live data or cleans old files.
 - A Mac host folder is off-volume **not** off-device; an external encrypted drive or secured NAS and a replacement-stack browser recovery exercise remain pending.
+
+## Real-browser accessibility QA (Sprint 2, in review)
+- Fixed headings that previously rendered white on light paper; Chrome confirmed the existing failure and corrected contrast at 11.23:1 on login/dashboard/profile.
+- Corrected duplicate main landmark on login, malformed profile/dashboard card sections, and dead `/contact/` account-request link.
+- Added no-dependency Chrome CDP smoke for desktop/mobile authenticated pages, skip-link keyboard access, print header CSS and overflow checks. Needs CI verification and representative scan/report browser fixture later.
