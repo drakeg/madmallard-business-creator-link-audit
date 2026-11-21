@@ -64,3 +64,14 @@ See [docs/BACKLOG.md](docs/BACKLOG.md) for historical delivered work and unresol
 ## Sprint 3 — automated browser acceptance in CI
 - Introduce an ephemeral local-only synthetic fixture server and Chrome run in GitHub Actions. Each run uses random test administrator credentials, a temporary SQLite database, and simulated completed scan evidence, so it cannot read or modify production creator data.
 - Check sign-in, mobile dashboard/project/Quick Review, exact-affiliate-URL deduplication, CSV export, print layouts, contrast, landmarks and keyboard skip link on every PR.
+
+## First-run organization onboarding — P1 UI refinement
+
+- In review: show the exact first action when an administrator has no customer organization, instead of displaying an unusable Create Project form with an empty required select.
+- Give customer users with no assigned organizations a clear administrator-contact instruction. Restore the project creation form immediately when membership/customer access exists.
+- Correct previously malformed organization-admin card markup and add real desktop/mobile Chrome smoke coverage.
+
+- Extend browser CI to verify the zero-organization state before the synthetic fixture is seeded, then repeat the populated project/report flow. No customer records outside the ephemeral runner.
+
+## CI Chrome startup reliability
+- In review: recent Renovate GitHub Actions runs showed intermittent `Chrome did not start its debugging endpoint` failures on Ubuntu runners while other runs passed. Add isolated startup retries with bounded wait and diagnostic Chrome stderr, retain browser sandbox, and never ignore content/contrast assertions.

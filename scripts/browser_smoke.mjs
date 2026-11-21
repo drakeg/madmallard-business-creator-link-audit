@@ -2,6 +2,7 @@
 // Uses a temporary profile and read-only authenticated page navigation.
 // Does not create customers, modify records, or print credentials.
 import { spawn } from 'node:child_process';
+import { openSync, closeSync } from 'node:fs';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -89,17 +90,41 @@ async function checkPage(name) {
 }
 
 try {
-  chrome = spawn(chromePath, [
-    '--headless=new', '--disable-gpu', '--disable-extensions', '--no-first-run',
-    '--no-default-browser-check', '--remote-debugging-port=0',
-    '--user-data-dir=' + directory, '--window-size=1280,900', 'about:blank',
-  ], { stdio: 'ignore' });
+  // CI runner startup may be slow or Chrome may exit before writing the debugger port.
+  // Keep an ephemeral profile for each attempt; never relax the browser sandbox.
   let port;
-  for (let i=0;i<100;i++) {
-    try { port=Number((await readFile(join(directory,'DevToolsActivePort'),'utf8')).split('\n')[0]); break; }
-    catch { await sleep(150); }
+  let startupError = '';
+  for (let attempt = 1; attempt <= 2 && !port; attempt++) {
+    const profile = join(directory, 'profile-' + attempt);
+    const logPath = join(directory, 'chrome-' + attempt + '.log');
+    const stderrFd = openSync(logPath, 'w', 0o600);
+    let spawnError;
+    chrome = spawn(chromePath, [
+      '--headless=new', '--disable-gpu', '--disable-extensions', '--disable-dev-shm-usage',
+      '--no-first-run', '--no-default-browser-check', '--remote-debugging-address=127.0.0.1',
+      '--remote-debugging-port=0', '--user-data-dir=' + profile,
+      '--window-size=1280,900', 'about:blank',
+    ], { stdio: ['ignore', 'ignore', stderrFd] });
+    closeSync(stderrFd);
+    chrome.on('error', error => { spawnError = error.message; });
+    for (let i=0;i<200;i++) {
+      try {
+        const value = Number((await readFile(join(profile,'DevToolsActivePort'),'utf8')).split('\n')[0]);
+        if (Number.isInteger(value) && value > 0) { port = value; break; }
+      } catch { /* startup still in progress */ }
+      if (spawnError || chrome.exitCode !== null || chrome.signalCode !== null) break;
+      await sleep(150);
+    }
+    if (!port) {
+      const stderr = (await readFile(logPath,'utf8').catch(() => '')).slice(-1500);
+      startupError = 'attempt ' + attempt + ': ' +
+        (spawnError || 'exit=' + chrome.exitCode + ' signal=' + chrome.signalCode) +
+        (stderr ? '; Chrome stderr: ' + stderr : '');
+      chrome.kill('SIGTERM');
+      await sleep(250);
+    }
   }
-  insist(port,'Chrome did not start its debugging endpoint');
+  insist(port, 'Chrome did not start its debugging endpoint after two attempts. ' + startupError);
   const pages = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
   const page = pages.find(x=>x.type==='page');
   insist(page,'Chrome has no page target');
@@ -131,12 +156,25 @@ try {
       document.querySelector('form').requestSubmit(); return true; })()`);
     await waitFor('location.pathname === "/" && !!document.querySelector("main h1")','authenticated dashboard',100);
     checks.push(await checkPage('desktop dashboard'));
+    await navigate('/accounts/');
+    checks.push(await checkPage('desktop accounts administration'));
 
     await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:2,mobile:true});
     await navigate('/');
     checks.push(await checkPage('mobile dashboard'));
     await navigate('/profile/');
     checks.push(await checkPage('mobile profile'));
+    await navigate('/accounts/');
+    checks.push(await checkPage('mobile accounts administration'));
+    await navigate('/');
+    const noOrganization = await evalPage("document.querySelectorAll('#customer-select option').length === 0");
+    if (noOrganization) {
+      insist(await evalPage("document.querySelector('main')?.innerText.includes('Create a customer organization first')"),
+        'Admin missing first-organization onboarding guidance');
+      insist(await evalPage("!document.querySelector('form[action*=projects]')"),
+        'Create project form should not appear without a customer organization');
+      checks.push({page:'empty-workspace onboarding',result:'passed'});
+    }
     await send('Emulation.setEmulatedMedia',{media:'print'});
     insist(await evalPage("getComputedStyle(document.querySelector('header')).display === 'none'"),'print header remains visible');
     await send('Emulation.setEmulatedMedia',{media:''});

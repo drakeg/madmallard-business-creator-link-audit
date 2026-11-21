@@ -57,3 +57,7 @@ Do not run the production worker against a test database shared with real creato
 
 ## Continuous browser acceptance
 The GitHub Test MVP workflow runs `scripts/run_ci_browser_smoke.sh` in an ephemeral, isolated runner. It requires `CI=true`, a private `RUNNER_TEMP` directory, installed Chrome, Python/Gunicorn and Node 22. It generates a throwaway administrator password and SQLite database, seeds synthetic scan records, serves localhost only, runs the same browser checks as local LAN QA, then removes temporary files. Run it only on a disposable CI runner, never against a populated customer database.
+
+The CI browser runner also checks the first-run state **before** adding the synthetic customer, ensuring a new admin is guided to create their first organization and never sees an unusable empty project form. Afterward it seeds the disposable fixture and repeats browser acceptance with a populated project.
+
+The Chrome smoke retries browser startup up to twice using separate temporary profiles on slow CI machines and reports Chrome stderr on an unrecoverable startup failure. A successful startup never suppresses page, authorization or accessibility assertions. Do not solve a sandbox error by disabling Chrome's security model.
