@@ -208,6 +208,12 @@ try {
       await send('Emulation.setEmulatedMedia',{media:''});
       checks.push({page:'printed audit report header',result:'passed'});
     }
+    insist(await evalPage("!!document.querySelector('nav form[method=post][action*=logout] input[name=csrfmiddlewaretoken]')"),
+      'Navigation must include a CSRF-protected POST sign-out form');
+    await evalPage("(() => {document.querySelector('nav form[action*=logout]').requestSubmit(); return true})()");
+    await waitFor("location.pathname === '/login/' && !!document.querySelector('input[name=username]')",
+      'signed-out login page', 100);
+    checks.push({page:'logout via POST',result:'passed'});
   }
   console.log(JSON.stringify({passed:true,checks},null,2));
 } catch (error) {

@@ -91,3 +91,7 @@ See [docs/BACKLOG.md](docs/BACKLOG.md) for historical delivered work and unresol
   machine, confirmed retention schedule and measured full-stack RPO/RTO.
 
 - Add CI restore rehearsal against a throwaway migrated fixture database and the newly built image; continue to use separate, manually verified snapshots for actual Mac recovery.
+
+## Sprint 3 — sign-out reliability (in review)
+- Fixed Django 5.2 sign-out navigation: LogoutView only accepts POST, while the header previously linked to GET /logout/ and returned HTTP 405. Nav now uses a CSRF-protected form styled as a text link, without introducing a state-changing GET endpoint.
+- Three Django regressions cover logged-in logout, GET refusal, CSRF refusal, and logged-out dashboard redirect. Real Chrome smoke now submits the logout form and verifies the login page after both empty and populated synthetic QA journeys.

@@ -44,3 +44,5 @@ No application release or public open-source license has been created.
 - Unreleased (in review): non-destructive offline Docker recovery rehearsal for
   host/external SQLite backups, portability guardrail tests and encrypted
   off-device/recovery instructions. No network exposure or data deletion.
+
+- Unreleased (in review): repair Sign out by submitting Django's CSRF-protected POST logout; refuse GET logout and confirm real browser sign-out.
