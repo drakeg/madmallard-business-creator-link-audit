@@ -34,3 +34,5 @@ No application release or public open-source license has been created.
 - Unreleased (in review): network-isolated queued-scan/worker integration regressions covering unique-link deduplication, error handling and export/customer scoping.
 
 - Unreleased (in review): automatic PR-time Chrome synthetic creator-workflow checks using random, ephemeral local-only credentials and database.
+
+- Unreleased (in review): actionable first-run customer organization guidance, no dead-end project form, and valid account administration card markup.
