@@ -22,10 +22,10 @@ from audit.backup import inspect_database, read_only
 SAFE_IMAGE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/:@-]{0,199}$")
 
 # The SQLite copy is the *only* database the Django process ever opens.
-# The source backup is mounted read-only and Docker has no network or host port.
+# Docker has no host backup mount, network access or host port.
 CONTAINER_CHECK = """
 set -eu
-cp /recovery/source.sqlite3 /tmp/restored.sqlite3
+cat > /tmp/restored.sqlite3
 printf '%s  /tmp/restored.sqlite3\\n' "$EXPECTED_SHA256" | sha256sum -c - >/dev/null
 python manage.py check >/dev/null
 python manage.py makemigrations --check --dry-run >/dev/null
@@ -67,12 +67,11 @@ def rehearse(backup, image, expected_sha256=None, command=subprocess.run):
     started = time.monotonic()
     path, digest, counts = verify_backup_input(backup, expected_sha256)
     args = [
-        "docker", "run", "--rm",
+        "docker", "run", "--rm", "-i",
         "--network", "none", "--read-only",
         "--tmpfs", "/tmp:rw,noexec,nosuid,size=128m",
         "--security-opt", "no-new-privileges",
         "--cap-drop", "ALL", "--pids-limit", "128", "--memory", "512m",
-        "--mount", f"type=bind,src={path},dst=/recovery/source.sqlite3,readonly",
         "--env", "DB_PATH=/tmp/restored.sqlite3",
         "--env", "SECRET_KEY=offline-restore-verification-only-no-login",
         "--env", f"EXPECTED_SHA256={digest}",
@@ -85,7 +84,16 @@ def rehearse(backup, image, expected_sha256=None, command=subprocess.run):
     )
     if not image_check.stdout.strip():
         raise ValueError("Docker image inspection returned no image metadata")
-    result = command(args, check=True, capture_output=True, text=True, timeout=180)
+    # Stream file bytes to the unprivileged container; Linux runners cannot
+    # necessarily bind-mount a mode-0600 file owned by a different UID.
+    # No data is materialized in shell arguments or env variables.
+    with path.open("rb") as stream:
+        try:
+            result = command(args, stdin=stream, check=True, capture_output=True, text=True, timeout=180)
+        except subprocess.CalledProcessError as exc:
+            # Keep diagnostic output bounded and do not print backup contents.
+            detail = (exc.stderr or "")[-1200:]
+            raise ValueError("Offline Django restore failed: " + detail) from exc
     if "RESTORED_APPLICATION_OK" not in result.stdout:
         raise ValueError("Isolated Django recovery did not confirm success")
     return {

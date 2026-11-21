@@ -47,7 +47,7 @@ The rehearsal verifies the supplied backup locally and then starts a disposable
 backup to writable temporary storage, and runs the real Django system,
 migration-state and database integrity checks. It cannot start the worker,
 publish a port or touch the production named volume. The original backup
-is bind-mounted read-only. A failed migration check means the backup and chosen
+remains on the host and is streamed as bytes; it is never bind-mounted. A failed migration check means the backup and chosen
 image may not be compatible—use the image matching the snapshot or investigate
 in a second isolated environment rather than migrating production.
 

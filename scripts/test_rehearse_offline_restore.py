@@ -40,7 +40,10 @@ class RecoveryRehearsalTests(unittest.TestCase):
         self.assertIn("--cap-drop", args)
         self.assertNotIn("-p", args)
         self.assertNotIn("--publish", args)
-        self.assertIn(f"type=bind,src={self.backup},dst=/recovery/source.sqlite3,readonly", args)
+        self.assertNotIn("--mount", args)
+        self.assertIn("-i", args)
+        self.assertTrue(calls[1][calls[1].index("--env")+1].startswith("DB_PATH="))
+
         self.assertEqual(result["live_data_modified"], False)
         self.assertEqual(before, self.backup.read_bytes())
 
