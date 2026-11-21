@@ -28,3 +28,11 @@ AUDIT_BASE_URL=http://LAN-IP:8045 AUDIT_CREDENTIALS_FILE="$HOME/.config/madmalla
 ```
 
 The test creates and deletes an isolated Chrome profile; checks contrast, horizontal overflow, main landmarks, form CSRF markup, keyboard navigation to the skip link, authenticated desktop/mobile views and print layout. It only navigates pages and signs in. It does not mutate creator data or print passwords. Set `CHROME_PATH` to the local Chrome executable if needed. Do not expose Chrome's ephemeral debugging port to the LAN.
+
+## Worker integration test without public network
+
+The `audit.test_worker_e2e` tests use Django's real scan queue and worker
+command but stub outbound link checks. The suite requires no public network
+and does not exercise merchant content or attribution. To reproduce in a
+development container, run `python manage.py test audit.test_worker_e2e`.
+Do not run the production worker against a test database shared with real creators.

@@ -28,3 +28,5 @@ No application release or public open-source license has been created.
 - Unreleased (in review): real-browser accessibility fix for heading contrast, semantic landmarks/cards, and reusable LAN smoke tests for desktop/mobile/print/keyboard.
 
 - Unreleased: suppress Gunicorn 27 optional control-socket errors in read-only Docker runtime (no change to HTTP service).
+
+- Unreleased (in review): network-isolated queued-scan/worker integration regressions covering unique-link deduplication, error handling and export/customer scoping.

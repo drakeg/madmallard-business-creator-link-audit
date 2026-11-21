@@ -49,3 +49,8 @@ See [docs/BACKLOG.md](docs/BACKLOG.md) for historical delivered work and unresol
 
 ## Gunicorn 27 read-only runtime compatibility
 - Observed Gunicorn 27 attempting to create its optional control socket under non-writable /home/audit/.gunicorn in Docker. App HTTP remained responsive, but emitted an ERROR at startup. Dockerfile now disables this optional interface; the application server still runs with read-only root filesystem and drops all Linux capabilities.
+
+## Sprint 3 — worker/database integration regression
+
+- In review: integration tests post a real scan request, run the actual persistent worker loop, stub only outbound HTTP (no internet), and assert one request per unique exact URL, correct result fanout across three sources, distinct affiliate IDs, report CSV/print and cross-customer 404s.
+- Also verify unexpected checker failures are recorded as failed scans while preserving original content. This is a controlled network simulation, not a claim about real merchant availability or successful commission tracking.
