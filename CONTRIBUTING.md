@@ -72,3 +72,6 @@ rehearsal script requires an existing private backup file and locally installed
 matching Docker image. It does not require network access or expose ports.
 
 GitHub CI additionally runs `scripts/run_ci_restore_rehearsal.sh` after building the application image. It generates an empty synthetic migrated SQLite database under the temporary runner directory, passes the offline Docker recovery script, then removes the data. It requires `CI=true` and must never be run on live customer data.
+
+## Sign-out regression
+Django 5.2's LogoutView requires POST. The header must contain a CSRF-protected logout form, not an anchor to GET /logout/. Verify with `python manage.py test audit.test_logout` and the real Chrome smoke. Do not re-enable state-changing GET logout endpoints.

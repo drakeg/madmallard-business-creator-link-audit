@@ -40,3 +40,6 @@
 - [ ] Document hosting, pricing and support model before a public paid offering
 
 After each sprint, record verified completion here, update BACKLOG.md, test evidence, and release notes; start the next ready backlog item rather than waiting at a sprint boundary.
+
+### Sprint 3 sign-out regression (in review)
+- Fixed the header sign-out control to POST with CSRF, preserving Django's safe logout contract; added Django and Chrome end-to-end tests.
