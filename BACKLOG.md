@@ -60,3 +60,7 @@ See [docs/BACKLOG.md](docs/BACKLOG.md) for historical delivered work and unresol
 
 - In review: integration tests post a real scan request, run the actual persistent worker loop, stub only outbound HTTP (no internet), and assert one request per unique exact URL, correct result fanout across three sources, distinct affiliate IDs, report CSV/print and cross-customer 404s.
 - Also verify unexpected checker failures are recorded as failed scans while preserving original content. This is a controlled network simulation, not a claim about real merchant availability or successful commission tracking.
+
+## Sprint 3 — automated browser acceptance in CI
+- Introduce an ephemeral local-only synthetic fixture server and Chrome run in GitHub Actions. Each run uses random test administrator credentials, a temporary SQLite database, and simulated completed scan evidence, so it cannot read or modify production creator data.
+- Check sign-in, mobile dashboard/project/Quick Review, exact-affiliate-URL deduplication, CSV export, print layouts, contrast, landmarks and keyboard skip link on every PR.

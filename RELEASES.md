@@ -32,3 +32,5 @@ No application release or public open-source license has been created.
 - Unreleased (in review): isolated synthetic creator-report browser acceptance fixture and read-only Chrome checks for linked project, distinct affiliate IDs, action CSV and printable report.
 
 - Unreleased (in review): network-isolated queued-scan/worker integration regressions covering unique-link deduplication, error handling and export/customer scoping.
+
+- Unreleased (in review): automatic PR-time Chrome synthetic creator-workflow checks using random, ephemeral local-only credentials and database.
