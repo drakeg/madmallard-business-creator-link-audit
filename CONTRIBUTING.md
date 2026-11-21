@@ -61,3 +61,11 @@ The GitHub Test MVP workflow runs `scripts/run_ci_browser_smoke.sh` in an epheme
 The CI browser runner also checks the first-run state **before** adding the synthetic customer, ensuring a new admin is guided to create their first organization and never sees an unusable empty project form. Afterward it seeds the disposable fixture and repeats browser acceptance with a populated project.
 
 The Chrome smoke retries browser startup up to twice using separate temporary profiles on slow CI machines and reports Chrome stderr on an unrecoverable startup failure. A successful startup never suppresses page, authorization or accessibility assertions. Do not solve a sandbox error by disabling Chrome's security model.
+
+## Off-device recovery
+See `docs/DISASTER_RECOVERY.md` for an encrypted external-storage export, offline
+container restore rehearsal and a non-destructive replacement-stack plan. The
+rehearsal script requires an existing private backup file and locally installed
+matching Docker image. It does not require network access or expose ports.
+
+GitHub CI additionally runs `scripts/run_ci_restore_rehearsal.sh` after building the application image. It generates an empty synthetic migrated SQLite database under the temporary runner directory, passes the offline Docker recovery script, then removes the data. It requires `CI=true` and must never be run on live customer data.

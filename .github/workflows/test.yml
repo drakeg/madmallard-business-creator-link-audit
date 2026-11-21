@@ -19,4 +19,5 @@ jobs:
           node-version: '26'
       - run: bash scripts/run_ci_browser_smoke.sh
       - run: docker build -t audit:test .
+      - run: bash scripts/run_ci_restore_rehearsal.sh
       - run: docker run --rm audit:test lychee --version

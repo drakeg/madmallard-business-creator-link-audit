@@ -19,3 +19,12 @@ Renovate must not silently switch the project from Django 5.2 LTS to Django 6. A
 
 ## Gunicorn 27 container safety
 The application runs with a read-only root filesystem, so disable Gunicorn's optional local control socket by using `--no-control-socket` in its Docker command. This keeps serving HTTP without writing to the application user's home directory. Re-test the actual read-only container startup after any Gunicorn upgrade; do not remove `read_only`, `cap_drop`, or `no-new-privileges` to silence a control-server warning.
+
+## Recovery rehearsal safety
+Backup copies contain customer content and credentials. Keep local exports private
+(mode 0600), use encrypted independent storage for real off-device backups, and
+run `scripts/rehearse_offline_restore.py` in a network-disabled disposable
+container. Never replace or wipe live volumes, open a recovery container to the
+internet, publish an audit database, or auto-delete backups. See
+`docs/DISASTER_RECOVERY.md`; distinguish a rehearsed SQLite/Django check from
+a timed replacement-stack RTO/RPO.

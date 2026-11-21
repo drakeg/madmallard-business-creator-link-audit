@@ -139,3 +139,7 @@ stop only this stack and copy the volume); use the operator commands in [local b
 See [Sprint plan](SPRINTS.md), [prioritized backlog](BACKLOG.md), [contribution guide](CONTRIBUTING.md), [release policy](RELEASES.md), and [security policy](SECURITY.md). The $149 per-engagement pilot is a **hypothesis**, not validated demand. Target customers are small travel/RV content creators and agencies with numerous monetized links. Success is measured in unique links triaged, manual decisions avoided, actionable corrections, and prospective willingness to pay.
 
 No repository-level open-source license has yet been chosen; vendored dependency notices are not a license for this application.
+
+## Backup portability and disaster recovery
+
+For encrypted off-device exports and a non-destructive, network-disabled Docker recovery rehearsal, see [Disaster recovery](docs/DISASTER_RECOVERY.md). A host backup alone is not off-device protection; actual replacement-stack RTO/RPO have not been measured.
