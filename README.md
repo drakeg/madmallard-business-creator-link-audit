@@ -139,3 +139,7 @@ stop only this stack and copy the volume); use the operator commands in [local b
 See [Sprint plan](SPRINTS.md), [prioritized backlog](BACKLOG.md), [contribution guide](CONTRIBUTING.md), [release policy](RELEASES.md), and [security policy](SECURITY.md). The $149 per-engagement pilot is a **hypothesis**, not validated demand. Target customers are small travel/RV content creators and agencies with numerous monetized links. Success is measured in unique links triaged, manual decisions avoided, actionable corrections, and prospective willingness to pay.
 
 No repository-level open-source license has yet been chosen; vendored dependency notices are not a license for this application.
+
+## Administrator-assisted password recovery
+
+On the **Customers & accounts** page, a staff administrator can issue a short-lived recovery link for an active customer account and share it privately. Only a superuser may issue links for staff accounts. Links are invalid after password change; the system records issuance without storing the link. There is no email delivery or self-service forgot-password feature yet. The HTTP LAN test environment is not appropriate for exchanging reset links outside a trusted local network; production use requires HTTPS.

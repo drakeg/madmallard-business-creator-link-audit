@@ -1,0 +1,8 @@
+{% extends 'audit/base.html' %}{% block content %}
+<p class="eyebrow">Administrator-assisted recovery</p><h1>Password recovery link issued</h1>
+<section class="card"><p>A recovery link was generated for <strong>{{ target.username }}</strong>. It expires in one hour or after the password is changed. No email was sent.</p>
+<label for="recovery-link">Share securely with the intended account holder</label>
+<input id="recovery-link" value="{{ recovery_link }}" readonly aria-describedby="recovery-warning">
+<p id="recovery-warning" class="notice">This link grants password reset access. Send it through a trusted private channel, not a public ticket. The local pilot uses HTTP on a trusted LAN; use HTTPS before remote or production access. This page will not redisplay this link after navigation.</p>
+<a class="button secondary" href="{% url 'accounts' %}">Return to accounts</a></section>
+{% endblock %}

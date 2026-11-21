@@ -1,0 +1,4 @@
+{% extends 'audit/base.html' %}{% block content %}
+<p class="eyebrow">Account recovery</p><h1>Password updated</h1>
+<section class="card"><p>Your new password has been saved. The previous recovery link can no longer be used.</p>
+<a class="button" href="{% url 'login' %}">Sign in</a></section>{% endblock %}

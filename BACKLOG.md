@@ -75,3 +75,8 @@ See [docs/BACKLOG.md](docs/BACKLOG.md) for historical delivered work and unresol
 
 ## CI Chrome startup reliability
 - In review: recent Renovate GitHub Actions runs showed intermittent `Chrome did not start its debugging endpoint` failures on Ubuntu runners while other runs passed. Add isolated startup retries with bounded wait and diagnostic Chrome stderr, retain browser sandbox, and never ignore content/contrast assertions.
+
+## Sprint 2 — administrator-assisted account recovery (in review)
+- Admins may issue an expiring, single-use-on-password-change reset link for an active account; no SMTP/email integration is claimed. Staff can only reset staff accounts when acting as a superuser. A new signed-out user can choose a new password using Django's validated SetPasswordForm.
+- Record issuance in the existing admin action log without persisting the token; require POST/CSRF and no-store responses. Normal self-service email reset and MFA remain unavailable pending enforced delivery/second factor.
+- This local pilot uses plaintext HTTP on a trusted LAN. **Require HTTPS before publicly sharing reset links or accepting production customers.**

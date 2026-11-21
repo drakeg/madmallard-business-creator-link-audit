@@ -38,3 +38,5 @@ No application release or public open-source license has been created.
 - Unreleased (in review): actionable first-run customer organization guidance, no dead-end project form, and valid account administration card markup.
 
 - Unreleased (in review): bounded retry and diagnostics for intermittent headless Chrome startup on GitHub runners, without weakening browser assertions or sandbox.
+
+- Unreleased (in review): administrator-assisted one-hour account recovery links using Django single-use tokens, CSRF-protected staff-only issuance, superuser guardrails, documented private delivery and no emailed reset claims.

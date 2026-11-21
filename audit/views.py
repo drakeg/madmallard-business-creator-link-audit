@@ -7,14 +7,18 @@ from django.contrib.auth import authenticate,login
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required,user_passes_test
 from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth import update_session_auth_hash
 from django.db import transaction
 from django.db.models import Count,Q
-from django.http import HttpResponse,HttpResponseBadRequest,StreamingHttpResponse
+from django.http import HttpResponse,HttpResponseBadRequest,HttpResponseForbidden,StreamingHttpResponse
 from django.shortcuts import render,redirect,get_object_or_404
 from django.utils import timezone
-from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.http import url_has_allowed_host_and_scheme, urlsafe_base64_encode
 from django.views.decorators.http import require_POST
+from django.views.decorators.cache import never_cache
+from django.utils.encoding import force_bytes
+from django.urls import reverse
 from .models import DiscountCode,Customer,Project,Source,Link,Scan,Result,LoginAttempt,YouTubePreview,AccountInvitation,AccountResetToken,AdminActionLog,UserMFA,AccountStatus,CustomerMembership
 from .forms import DiscountCodeForm,DiscountCodeReviewForm,SourceForm,AccountForm,ProfileForm,ReviewForm,InvitationForm,PasswordResetForm,MFASetupForm,AccountStatusForm,MembershipForm
 from .ingest import extract,uploaded,parameters
@@ -216,7 +220,30 @@ def accounts(request):
             user=form.save(commit=False); user.is_staff=form.cleaned_data['administrator']; user.save()
             if form.cleaned_data['customer']: form.cleaned_data['customer'].members.add(user)
             messages.success(request,'Account created. Share credentials with the intended customer securely.'); return redirect('accounts')
-    return render(request,'audit/accounts.html',{'form':form,'customers':Customer.objects.prefetch_related('members')})
+    return render(request,'audit/accounts.html',{'form':form,'customers':Customer.objects.prefetch_related('members'),'existing_users':User.objects.order_by('username')[:100]})
+
+@login_required
+@require_POST
+@never_cache
+def issue_password_recovery(request,user_id):
+    """Admin-assisted, single-use-on-password-change link. No email is sent."""
+    if not request.user.is_staff:
+        return HttpResponseForbidden('Only administrators can issue recovery links.')
+    target=get_object_or_404(User,pk=user_id)
+    if target.is_staff and not request.user.is_superuser:
+        return HttpResponseForbidden('Only superusers can issue recovery links for staff accounts.')
+    if not target.is_active:
+        return HttpResponseBadRequest('Disabled accounts cannot receive recovery links.')
+    uid=urlsafe_base64_encode(force_bytes(target.pk))
+    token=default_token_generator.make_token(target)
+    link=request.build_absolute_uri(reverse('recover_password',kwargs={'uidb64':uid,'token':token}))
+    AdminActionLog.objects.create(
+        action_type='password_reset_requested', performed_by=request.user,
+        target_user=target, details='Administrator issued a manual password recovery link; no email sent.',
+    )
+    response=render(request,'audit/recovery_link.html',{'target':target,'recovery_link':link})
+    response['Referrer-Policy']='no-referrer'
+    return response
 
 def health(request): return HttpResponse('ok',content_type='text/plain')
 
@@ -508,6 +535,29 @@ def export_admin_logs(request):
     return render(request,'audit/export_admin_logs.html',{'logs':logs})
 
 # ==================== EXISTING VIEWS (unchanged) ====================
+
+@login_required
+@require_POST
+@never_cache
+def issue_password_recovery(request,user_id):
+    """Admin-assisted, single-use-on-password-change link. No email is sent."""
+    if not request.user.is_staff:
+        return HttpResponseForbidden('Only administrators can issue recovery links.')
+    target=get_object_or_404(User,pk=user_id)
+    if target.is_staff and not request.user.is_superuser:
+        return HttpResponseForbidden('Only superusers can issue recovery links for staff accounts.')
+    if not target.is_active:
+        return HttpResponseBadRequest('Disabled accounts cannot receive recovery links.')
+    uid=urlsafe_base64_encode(force_bytes(target.pk))
+    token=default_token_generator.make_token(target)
+    link=request.build_absolute_uri(reverse('recover_password',kwargs={'uidb64':uid,'token':token}))
+    AdminActionLog.objects.create(
+        action_type='password_reset_requested', performed_by=request.user,
+        target_user=target, details='Administrator issued a manual password recovery link; no email sent.',
+    )
+    response=render(request,'audit/recovery_link.html',{'target':target,'recovery_link':link})
+    response['Referrer-Policy']='no-referrer'
+    return response
 
 def health(request): return HttpResponse('ok',content_type='text/plain')
 

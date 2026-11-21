@@ -61,3 +61,6 @@ The GitHub Test MVP workflow runs `scripts/run_ci_browser_smoke.sh` in an epheme
 The CI browser runner also checks the first-run state **before** adding the synthetic customer, ensuring a new admin is guided to create their first organization and never sees an unusable empty project form. Afterward it seeds the disposable fixture and repeats browser acceptance with a populated project.
 
 The Chrome smoke retries browser startup up to twice using separate temporary profiles on slow CI machines and reports Chrome stderr on an unrecoverable startup failure. A successful startup never suppresses page, authorization or accessibility assertions. Do not solve a sandbox error by disabling Chrome's security model.
+
+## Administrator-assisted recovery
+Administrators can issue one-hour Django password recovery links from the existing account directory. This is **manual delivery**, not an email feature. Issuance is audited (not the secret token), POST/CSRF-protected and restricted: only superusers can issue links for staff accounts. Links stop working after the target password changes. Never log, paste in public tickets or send them over untrusted connections; the current LAN HTTP pilot requires HTTPS before public/customer deployment. Email reset and MFA remain disabled. Test with `python manage.py test audit.test_admin_recovery`.

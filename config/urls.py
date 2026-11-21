@@ -1,5 +1,6 @@
 from django.urls import path
-from django.contrib.auth.views import LogoutView
+from django.contrib.auth.views import LogoutView, PasswordResetConfirmView, PasswordResetCompleteView
+from django.urls import reverse_lazy
 from audit import views, youtube_views, quick_views
 
 urlpatterns=[
@@ -24,6 +25,12 @@ urlpatterns=[
     path('login/',views.login_view,name='login'),
     path('logout/',LogoutView.as_view(),name='logout'),
     path('password-reset-request/',views.request_password_reset,name='request_password_reset'),
+    path('accounts/<int:user_id>/recovery-link/',views.issue_password_recovery,name='issue_password_recovery'),
+    path('recover/<uidb64>/<token>/',PasswordResetConfirmView.as_view(
+        template_name='audit/recovery_confirm.html',
+        success_url=reverse_lazy('recover_password_complete')),name='recover_password'),
+    path('recover/complete/',PasswordResetCompleteView.as_view(
+        template_name='audit/recovery_complete.html'),name='recover_password_complete'),
 
     # Account invitations and management (NEW - P1 backlog item)
     path('accounts/invitations/<int:customer_id>/',views.send_invitation,name='send_invitation'),

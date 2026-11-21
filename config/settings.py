@@ -16,6 +16,7 @@ STATIC_URL='/static/'
 DEFAULT_AUTO_FIELD='django.db.models.BigAutoField'
 LOGIN_URL='/login/'
 LOGIN_REDIRECT_URL='/'
+PASSWORD_RESET_TIMEOUT=3600  # Admin-issued links expire after one hour.
 LOGOUT_REDIRECT_URL='/login/'
 SESSION_COOKIE_HTTPONLY=True
 SESSION_COOKIE_SAMESITE='Lax'
