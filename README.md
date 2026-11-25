@@ -1,12 +1,9 @@
 # Mad Mallard Solutions — Creator Link Audit
 
-[![License](https://img.shields.io/github/license/drakeg/madmallard-business-creator-link-audit)](https://github.com/drakeg/madmallard-business-creator-link-audit/blob/main/LICENSE)
-
-
 <!-- madmallard-badges:start -->
 ![Django](https://img.shields.io/badge/Django-092E20?logo=django&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white) ![Docker Compose](https://img.shields.io/badge/Docker%20Compose-2496ED?logo=docker&logoColor=white) ![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
 
-[![test](https://github.com/drakeg/madmallard-business-creator-link-audit/actions/workflows/test.yml/badge.svg)](https://github.com/drakeg/madmallard-business-creator-link-audit/actions/workflows/test.yml) [![Issues](https://img.shields.io/github/issues/drakeg/madmallard-business-creator-link-audit)](https://github.com/drakeg/madmallard-business-creator-link-audit/issues) [![Pull requests](https://img.shields.io/github/issues-pr/drakeg/madmallard-business-creator-link-audit)](https://github.com/drakeg/madmallard-business-creator-link-audit/pulls)
+[![test](https://github.com/drakeg/madmallard-business-creator-link-audit/actions/workflows/test.yml/badge.svg)](https://github.com/drakeg/madmallard-business-creator-link-audit/actions/workflows/test.yml) [![Issues](https://img.shields.io/github/issues/drakeg/madmallard-business-creator-link-audit)](https://github.com/drakeg/madmallard-business-creator-link-audit/issues) [![Pull requests](https://img.shields.io/github/issues-pr/drakeg/madmallard-business-creator-link-audit)](https://github.com/drakeg/madmallard-business-creator-link-audit/pulls) [![License](https://img.shields.io/github/license/drakeg/madmallard-business-creator-link-audit)](https://github.com/drakeg/madmallard-business-creator-link-audit/blob/main/LICENSE)
 <!-- madmallard-badges:end -->
 
 A local, private MVP for reviewing RV/travel creators’ product, sponsor and affiliate
